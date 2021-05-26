@@ -13,20 +13,27 @@ class Agent:
         self.open_limit_orders = {}
 
     def market_order(self, side: Side, volume: int):
-        self.exchange.handle_order(MarketOrder(side, volume))
+        self.exchange.handle_order(MarketOrder(side, volume),
+                                   self.id)
 
     def limit_order(self, side, price: float, volume: int):
-        self.exchange.handle_order(LimitOrder(side, price, volume))
-        # TODO add limit order in the agent memory
+        lo = LimitOrder(side, price, volume)
+        order_id = self.exchange.handle_order(lo, self.id)
+        self.open_limit_orders[order_id] = lo
+        #TODO change order_id from string to class
+        return order_id
+
 
     def cancel_order(self, order_id: str):
-        self.exchange.handle_order(CancelOrder(order_id))
+        self.exchange.handle_order(CancelOrder(order_id),
+                                   self.id)
         # TODO remove limit order from agent memory
 
 
 class AgentFCN(Agent):
 
     def __init__(self):
+        #super().__init__()
         # TODO add FCN parameters
         raise
 
