@@ -1,5 +1,6 @@
-import uuid
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from typing import Union
 
 
 class Side(Enum):
@@ -11,28 +12,32 @@ class Order:
     pass
 
 
+@dataclass(frozen=True)
 class LimitOrder(Order):
-
-    def __init__(self, side, price, volume):
-        self.type = "L"
-        self.price = price
-        self.side = side
-        self.volume = volume
+    price: int
+    volume: int
+    side: Side
+    type: str = field(default="L", init=False)
 
 
+@dataclass(frozen=True)
 class CancelOrder(Order):
-
-    def __init__(self, order_id):
-        self.type = "C"
-        self.order_id = order_id
+    order_id: str
+    type: str = field(default="C", init=False)
 
 
+@dataclass(frozen=True)
 class MarketOrder(Order):
-
-    def __init__(self, side, volume):
-        self.type = "M"
-        self.side = side
-        self.volume = volume
+    volume: int
+    side: Side
+    type: str = field(default="M", init=False)
 
 
-order_id = str(uuid.uuid4())
+@dataclass(frozen=True)
+class OrderReceipt:
+    outcome: bool
+    order_id: Union[str, None]
+    order_type: Union[str, None]
+    average_price: Union[float, int, None]
+    volume: Union[str, None]
+    side: Union[Side, None]
