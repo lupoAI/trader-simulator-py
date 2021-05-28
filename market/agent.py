@@ -1,5 +1,3 @@
-from typing import Union
-
 from market.data_model import LimitOrder, MarketOrder, CancelOrder
 from market.data_model import OrderReceipt
 from market.data_model import Side
@@ -43,31 +41,44 @@ class Agent:
         self.open_limit_orders[order_receipt.order_id] = order
 
     def handle_market_order_receipt(self, order_receipt: OrderReceipt):
-        if order_receipt == Side.BUY:
+        if order_receipt.side == Side.BUY:
             self.cash -= order_receipt.average_price * order_receipt.volume
             self.stock += order_receipt.volume
-        else:
+        elif order_receipt.side == Side.SELL:
             self.cash += order_receipt.average_price * order_receipt.volume
             self.stock -= order_receipt.volume
+        else:
+            raise ValueError("Order Side should be either BUY or SELL")
 
     def handle_cancel_order_receipt(self, order_id: str):
         del self.open_limit_orders[order_id]
 
-    def handle_limit_execution(self, order_id: str, average_price: Union[float, int], volume: int):
-        # TODO
-        raise NotImplementedError
+    def handle_limit_execution(self, order_id: str, volume: int):
+        order = self.open_limit_orders[order_id]
+        price = order.price
+        order_volume = order.volume
+        if volume > order_volume:
+            raise ValueError("Requested volume is greater than offered volume")
+        if order.side == Side.BUY:
+            self.cash -= price * volume
+            self.stock += volume
+        else:
+            self.cash += price * volume
+            self.stock -= volume
+        if order.volume == volume:
+            del self.open_limit_orders[order_id]
+            self.exchange.closed_limit_order_routine(order_id)
+        else:
+            order.trade_volume(volume)
 
-    def get_order_ids(self):
-        return list(self.open_limit_orders.keys())
 
-
-class AgentFCN(Agent):
-
-    def __init__(self):
-        # super().__init__()
-        # TODO add FCN parameters
-        raise NotImplementedError
-
-    def decide_order(self):
-        # TODO add functionality of choice based on parameters
-        raise NotImplementedError
+# class AgentFCN(Agent):
+#
+#     def __init__(self):
+#         # super().__init__()
+#         # TODO add FCN parameters
+#         raise NotImplementedError
+#
+#     def decide_order(self):
+#         # TODO add functionality of choice based on parameters
+#         raise NotImplementedError

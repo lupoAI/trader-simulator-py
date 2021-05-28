@@ -19,6 +19,9 @@ class LimitOrder(Order):
     side: Side
     type: str = field(default="L", init=False)
 
+    def trade_volume(self, volume_traded):
+        object.__setattr__(self, 'volume', self.volume - volume_traded)
+
 
 @dataclass(frozen=True)
 class CancelOrder(Order):
@@ -35,9 +38,9 @@ class MarketOrder(Order):
 
 @dataclass(frozen=True)
 class OrderReceipt:
-    outcome: bool
-    order_id: Union[str, None]
-    order_type: Union[str, None]
-    average_price: Union[float, int, None]
-    volume: Union[str, None]
-    side: Union[Side, None]
+    outcome: bool = False
+    order_id: Union[str, None] = None
+    order_type: Union[str, None] = None
+    average_price: Union[float, int, None] = None
+    volume: Union[int, None] = None
+    side: Union[Side, None] = None

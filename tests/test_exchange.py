@@ -1,6 +1,3 @@
-from numpy import inf
-
-
 def test_exchange_can_find_agent_from_id(exchange):
     assert exchange.agent_id_to_agent == {}
 
@@ -26,23 +23,23 @@ def test_exchange_can_remember_available_ask_prices(exchange):
 
 
 def test_exchange_can_track_best_bid_price(exchange):
-    assert exchange.best_bid_price == 0
+    assert exchange.best_bid_price is None
 
 
 def test_exchange_can_track_best_ask_price(exchange):
-    assert exchange.best_ask_price == inf
+    assert exchange.best_ask_price is None
 
 
 def test_exchange_can_track_best_bid_volume(exchange):
-    assert exchange.best_bid_volume == 0
+    assert exchange.best_bid_volume is None
 
 
 def test_exchange_can_track_best_ask_volume(exchange):
-    assert exchange.best_ask_volume == 0
+    assert exchange.best_ask_volume is None
 
 
 def test_exchange_has_a_mid_price(exchange):
-    assert exchange.mid_price == 0
+    assert exchange.mid_price is None
 
 
 def test_exchange_has_starting_true_price(exchange):
