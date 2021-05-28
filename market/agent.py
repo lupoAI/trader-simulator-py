@@ -72,6 +72,12 @@ class Agent:
             order.trade_volume(volume)
 
 
+class RandomAgent(Agent):
+
+    def make_trading_decision(self):
+        pass
+
+
 # class AgentFCN(Agent):
 #
 #     def __init__(self):

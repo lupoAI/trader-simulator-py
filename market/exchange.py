@@ -21,7 +21,8 @@ class Exchange:
 
         self.best_bid_price = None
         self.best_ask_price = None
-        self.best_bid_volume = None  # Not implemented yet
+        # TODO add the volume tracking and possibly total volume
+        self.best_bid_volume = None
         self.best_ask_volume = None
 
         self.mid_price = None
@@ -43,8 +44,11 @@ class Exchange:
             raise ValueError("Order Type not understood")
 
     def handle_limit_order(self, agent_id: str, order: LimitOrder):
-        order_id = str(uuid.uuid4())
+        order_valid = self.check_order_validity(order)
+        if not order_valid:
+            return OrderReceipt()
 
+        order_id = str(uuid.uuid4())
         market_order_condition = self.get_market_order_conditions(order.side, order.price)
 
         if market_order_condition:
@@ -66,6 +70,10 @@ class Exchange:
         return OrderReceipt(True, order_id, "L", order.price, order.volume, order.side)
 
     def handle_market_order(self, order: MarketOrder):
+        order_valid = self.check_order_validity(order)
+        if not order_valid:
+            return OrderReceipt()
+
         order_id = str(uuid.uuid4())
         volume_left = order.volume
         volume_executed = 0
@@ -168,3 +176,12 @@ class Exchange:
         else:
             market_order_condition = False
         return market_order_condition
+
+    @staticmethod
+    def check_order_validity(order: Union[LimitOrder, MarketOrder]):
+        if order.type == "L":
+            return order.price > 0 and order.volume > 0
+        elif order.type == "M":
+            return order.volume > 0
+        else:
+            raise ValueError("Order Type not understood")
