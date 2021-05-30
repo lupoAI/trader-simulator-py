@@ -1,15 +1,27 @@
-import numpy as np
+from dataclasses import dataclass, field
+
+from numpy.random import RandomState
 
 from market.agent import Agent
-from market.data_model import Side
+from market.data_model import MarketSnapshotSeries, MarketSnapshot
+from market.data_model import Side, Series
 from market.exchange import Exchange
 
 
+@dataclass
 class Simulator:
+    exchange: Exchange
+    n_agents: int
+    market_snapshots: MarketSnapshotSeries = field(default=MarketSnapshotSeries(), init=False)
+    mid_price_series: Series = field(default=Series(), init=False)
 
-    def __init__(self, exchange: Exchange, n_agents: int):
-        self.exchange = exchange
-        self.n_agents = n_agents
+    def save_market_snapshot(self, time_step: int):
+        market_snapshot = self.exchange.return_market_snapshot()
+        self.market_snapshots.add(MarketSnapshot(time_step=time_step, **market_snapshot))
+
+    def clear_cache(self):
+        self.market_snapshots = MarketSnapshotSeries()
+        self.mid_price_series = Series()
 
 
 class RandomSimulator(Simulator):
@@ -18,16 +30,20 @@ class RandomSimulator(Simulator):
         super().__init__(exchange, n_agents)
         self.agents = [Agent(self.exchange) for _ in range(self.n_agents)]
 
-    def run(self, n_steps: int, trades_per_step: int, starting_price: int):
+    def run(self, n_steps: int, trades_per_step: int, starting_price: int, snapshot_interval: int,
+            random_seed: int = 42):
+        self.clear_cache()
+        rand_state = RandomState(random_seed)
         size_matrix = (n_steps, trades_per_step)
-        agents = np.random.randint(0, self.n_agents, size=size_matrix)
-        sides = np.random.randint(1, 3, size=size_matrix)
-        adjustment = (sides - 1.5) * 0.2
-        sign = np.random.randint(0, 2, size=size_matrix) * 2 - 1
+        agents = rand_state.randint(0, self.n_agents, size=size_matrix)
+        sides = rand_state.randint(1, 3, size=size_matrix)
+        adjustment = (sides - 1.5) * 0.1
+        sign = rand_state.randint(0, 2, size=size_matrix) * 2 - 1
         volume = 1
-        offset = np.random.uniform(0, 0.1, size=size_matrix)
-        mid_price = []
+        offset = rand_state.uniform(0, 0.03, size=size_matrix)
         for i in range(n_steps):
+            if (i + 1) % snapshot_interval == 0:
+                self.save_market_snapshot(i)
             for j in range(trades_per_step):
                 if self.exchange.last_valid_mid_price is None:
                     price = int((starting_price + adjustment[i, j])
@@ -36,5 +52,5 @@ class RandomSimulator(Simulator):
                     price = int((self.exchange.last_valid_mid_price + adjustment[i, j])
                                 * (1 + sign[i, j] * offset[i, j]))
                 self.agents[agents[i, j]].limit_order(Side(sides[i, j]), price, volume)
-            mid_price += [self.exchange.mid_price]
-        return mid_price
+            self.mid_price_series.add(i, self.exchange.mid_price)
+        self.market_snapshots.format_price_to_volume()
