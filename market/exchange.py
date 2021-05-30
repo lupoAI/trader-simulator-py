@@ -1,6 +1,7 @@
 import uuid
 from bisect import insort
 from collections import deque
+from copy import deepcopy
 from typing import Union
 
 from market.data_model import LimitOrder, MarketOrder, CancelOrder
@@ -229,3 +230,15 @@ class Exchange:
             return order.order_id in self.order_id_to_order
         else:
             raise ValueError("Order Type not understood")
+
+    def return_market_snapshot(self):
+        snapshot = {'price_to_volume': self.price_to_volume,
+                    'best_bid_price': self.best_bid_price,
+                    'best_ask_price': self.best_ask_price,
+                    'best_bid_volume': self.best_bid_volume,
+                    'best_ask_volume': self.best_ask_volume,
+                    'total_bid_volume': self.total_bid_volume,
+                    'total_ask_volume': self.total_ask_volume,
+                    'mid_price': self.mid_price
+                    }
+        return deepcopy(snapshot)
