@@ -25,18 +25,16 @@ class RandomSimulator(Simulator):
         adjustment = (sides - 1.5) * 0.2
         sign = np.random.randint(0, 2, size=size_matrix) * 2 - 1
         volume = 1
-        chosen_offset = np.random.uniform(0, 0.1, size=size_matrix)
+        offset = np.random.uniform(0, 0.1, size=size_matrix)
         mid_price = []
-        last_valid_mid_price = None
         for i in range(n_steps):
             for j in range(trades_per_step):
-                if last_valid_mid_price is None:
-                    price = int((starting_price + adjustment[i, j]) * (1 + sign[i, j] * chosen_offset[i, j]))
+                if self.exchange.last_valid_mid_price is None:
+                    price = int((starting_price + adjustment[i, j])
+                                * (1 + sign[i, j] * offset[i, j]))
                 else:
-                    price = int((last_valid_mid_price + adjustment[i, j]) * (1 + sign[i, j] * chosen_offset[i, j]))
-                self.agents[agents[i, j]].limit_order(Side(sides[i, j]),
-                                                      price, volume)
-            if self.exchange.mid_price is not None:
-                last_valid_mid_price = self.exchange.mid_price
+                    price = int((self.exchange.last_valid_mid_price + adjustment[i, j])
+                                * (1 + sign[i, j] * offset[i, j]))
+                self.agents[agents[i, j]].limit_order(Side(sides[i, j]), price, volume)
             mid_price += [self.exchange.mid_price]
         return mid_price

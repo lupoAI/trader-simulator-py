@@ -42,5 +42,9 @@ def test_exchange_has_a_mid_price(exchange):
     assert exchange.mid_price is None
 
 
+def test_exchange_has_a_last_valid_mid_price(exchange):
+    assert exchange.last_valid_mid_price is None
+
+
 def test_exchange_has_starting_true_price(exchange):
     assert exchange.true_price == 10000

@@ -72,19 +72,15 @@ class Agent:
             order.trade_volume(volume)
 
 
-class RandomAgent(Agent):
 
-    def make_trading_decision(self):
-        pass
+class AgentFCN(Agent):
 
+    def __init__(self, exchange: Exchange, f_param, c_param, n_param):
+        super().__init__(exchange)
+        self.f_param = f_param
+        self.c_param = c_param
+        self.n_param = n_param
 
-# class AgentFCN(Agent):
-#
-#     def __init__(self):
-#         # super().__init__()
-#         # TODO add FCN parameters
-#         raise NotImplementedError
-#
-#     def decide_order(self):
-#         # TODO add functionality of choice based on parameters
-#         raise NotImplementedError
+    def decide_order(self):
+        # TODO add functionality of choice based on parameters
+        raise NotImplementedError

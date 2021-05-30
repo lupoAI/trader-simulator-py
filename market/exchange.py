@@ -24,9 +24,11 @@ class Exchange:
         # TODO add the volume tracking and possibly total volume
         self.best_bid_volume = None
         self.best_ask_volume = None
+        self.total_bid_volume = None
+        self.total_ask_volume = None
 
         self.mid_price = None
-        self.true_price = 10000
+        self.last_valid_mid_price = None
 
     def subscribed(self, agent_self):
         agent_id = str(uuid.uuid4())
@@ -163,6 +165,8 @@ class Exchange:
             self.mid_price = (self.best_bid_price + self.best_ask_price) / 2
         else:
             self.mid_price = None
+        if self.mid_price is not None:
+            self.last_valid_mid_price = self.mid_price
 
     def get_market_order_conditions(self, side: Side, price: int):
         if (self.best_bid_price is not None) and (self.best_ask_price is not None):
