@@ -46,5 +46,13 @@ def test_exchange_has_a_last_valid_mid_price(exchange):
     assert exchange.last_valid_mid_price is None
 
 
-def test_exchange_has_starting_true_price(exchange):
-    assert exchange.true_price == 10000
+def test_exchange_has_total_bid_volume(exchange):
+    assert exchange.total_bid_volume == 0
+
+
+def test_exchange_has_total_ask_volume(exchange):
+    assert exchange.total_ask_volume == 0
+
+
+def test_exchange_can_track_price_to_volume(exchange):
+    assert exchange.price_to_volume == {}

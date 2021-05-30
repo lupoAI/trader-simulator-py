@@ -257,3 +257,54 @@ def test_limit_order_cancelled_from_exchange(exchange):
     assert assertions == [True] * 7
 
 
+def test_exchange_tracks_best_bid_and_volume_properly(exchange):
+    agent_buy = Agent(exchange)
+    agent_sell = Agent(exchange)
+    buy_receipt_1 = agent_buy.limit_order(Side.BUY, 100, 10, True)
+    agent_buy.limit_order(Side.BUY, 90, 10)
+    agent_buy.limit_order(Side.BUY, 90, 15)
+    buy_receipt_2 = agent_buy.limit_order(Side.BUY, 80, 20, True)
+
+    agent_sell.limit_order(Side.SELL, 110, 10)
+    agent_sell.limit_order(Side.SELL, 120, 20)
+    agent_sell.limit_order(Side.SELL, 120, 20)
+    agent_sell.limit_order(Side.SELL, 130, 15)
+
+    assertions = []
+    assertions += [exchange.best_bid_price == 100]
+    assertions += [exchange.best_ask_price == 110]
+    assertions += [exchange.best_bid_volume == 10]
+    assertions += [exchange.best_ask_volume == 10]
+    assertions += [exchange.total_bid_volume == 55]
+    assertions += [exchange.total_ask_volume == 65]
+
+    agent_buy.market_order(Side.BUY, 15)
+
+    assertions += [exchange.best_ask_price == 120]
+    assertions += [exchange.best_bid_volume == 10]
+    assertions += [exchange.best_ask_volume == 35]
+    assertions += [exchange.total_ask_volume == 50]
+
+    agent_buy.market_order(Side.BUY, 50)
+
+    assertions += [exchange.best_ask_price is None]
+    assertions += [exchange.best_ask_volume is None]
+    assertions += [exchange.total_ask_volume == 0]
+
+    agent_buy.cancel_order(buy_receipt_2.order_id)
+
+    assertions += [exchange.total_bid_volume == 35]
+
+    agent_buy.cancel_order(buy_receipt_1.order_id)
+
+    assertions += [exchange.best_bid_price == 90]
+    assertions += [exchange.best_bid_volume == 25]
+    assertions += [exchange.total_bid_volume == 25]
+
+    agent_sell.market_order(Side.SELL, 25)
+
+    assertions += [exchange.best_bid_price is None]
+    assertions += [exchange.best_bid_volume is None]
+    assertions += [exchange.total_bid_volume == 0]
+
+    assert assertions == [True] * 20

@@ -12,6 +12,13 @@ class Agent:
         self.open_limit_orders = {}
         self.cash = 0
         self.stock = 0
+        # # TODO add info tracking for agents
+        # self.best_bid_price = None
+        # self.best_ask_price = None
+        # self.best_bid_volume = None
+        # self.best_ask_volume = None
+        # self.total_bid_volume = 0
+        # self.total_ask_volume = 0
 
     def market_order(self, side: Side, volume: int, return_receipt: bool = False):
         mo = MarketOrder(volume, side)
@@ -70,7 +77,6 @@ class Agent:
             self.exchange.closed_limit_order_routine(order_id)
         else:
             order.trade_volume(volume)
-
 
 
 class AgentFCN(Agent):

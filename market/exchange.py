@@ -15,17 +15,17 @@ class Exchange:
         self.order_id_to_order = {}
         self.order_id_to_agent_id = {}
         self.price_to_orders_ids = {}
+        self.price_to_volume = {}
 
         self.sorted_bid_prices = []
         self.sorted_ask_prices = []
 
         self.best_bid_price = None
         self.best_ask_price = None
-        # TODO add the volume tracking and possibly total volume
         self.best_bid_volume = None
         self.best_ask_volume = None
-        self.total_bid_volume = None
-        self.total_ask_volume = None
+        self.total_bid_volume = 0
+        self.total_ask_volume = 0
 
         self.mid_price = None
         self.last_valid_mid_price = None
@@ -41,7 +41,7 @@ class Exchange:
         elif order.type == "M":
             return self.handle_market_order(order)
         elif order.type == "C":
-            return self.handle_cancel_order(order.order_id)
+            return self.handle_cancel_order(order)
         else:
             raise ValueError("Order Type not understood")
 
@@ -58,15 +58,25 @@ class Exchange:
             return self.handle_market_order(mo)
         elif order.price not in self.price_to_orders_ids:
             self.price_to_orders_ids[order.price] = deque([order_id])
+            self.price_to_volume[order.price] = order.volume
             if order.side == Side.BUY:
                 insort(self.sorted_bid_prices, order.price)
                 self.best_bid_price = self.sorted_bid_prices[-1]
+                self.best_bid_volume = self.price_to_volume[self.best_bid_price]
             else:
                 insort(self.sorted_ask_prices, order.price)
                 self.best_ask_price = self.sorted_ask_prices[0]
+                self.best_ask_volume = self.price_to_volume[self.best_ask_price]
             self.set_mid_price()
         else:
             self.price_to_orders_ids[order.price].append(order_id)
+            self.price_to_volume[order.price] += order.volume
+
+        if order.side == Side.BUY:
+            self.total_bid_volume += order.volume
+        else:
+            self.total_ask_volume += order.volume
+
         self.order_id_to_agent_id[order_id] = agent_id
         self.order_id_to_order[order_id] = order
         return OrderReceipt(True, order_id, "L", order.price, order.volume, order.side)
@@ -103,32 +113,56 @@ class Exchange:
             matched_agent_id = self.order_id_to_agent_id[matched_order_id]
             matched_agent = self.agent_id_to_agent[matched_agent_id]
             matched_volume = min(matched_order.volume, volume_left)
+            self.price_to_volume[price] -= matched_volume
+            # here we need to reset the best volume
             matched_agent.handle_limit_execution(matched_order_id, matched_volume)
             volume_left -= matched_volume
             volume_executed += matched_volume
             total_price += matched_volume * price
             average_price = total_price / volume_executed
 
+        if order.side == Side.BUY:
+            self.total_ask_volume -= order.volume
+            self.best_ask_volume = self.price_to_volume.get(self.best_ask_price, None)
+        else:
+            self.total_bid_volume -= order.volume
+            self.best_bid_volume = self.price_to_volume.get(self.best_bid_price, None)
+
         return OrderReceipt(True, order_id, "M", average_price, volume_executed, order.side)
 
-    def handle_cancel_order(self, order_id):
+    def handle_cancel_order(self, order: CancelOrder):
+        order_valid = self.check_order_validity(order)
+        if not order_valid:
+            return OrderReceipt()
+
+        order_id = order.order_id
         price = self.order_id_to_order[order_id].price
         side = self.order_id_to_order[order_id].side
+        volume = self.order_id_to_order[order_id].volume
         orders_at_price = self.price_to_orders_ids[price]
         if len(orders_at_price) == 1:
             del self.price_to_orders_ids[price]
+            del self.price_to_volume[price]
             if side == Side.BUY:
                 self.sorted_bid_prices.remove(price)
                 if self.sorted_bid_prices:
                     self.best_bid_price = self.sorted_bid_prices[-1]
+                    self.best_bid_volume = self.price_to_volume[self.best_bid_price]
+                    self.total_bid_volume -= volume
                 else:
                     self.best_bid_price = None
+                    self.best_bid_volume = None
+                    self.total_bid_volume = 0
             else:
                 self.sorted_ask_prices.remove(price)
                 if self.sorted_ask_prices:
                     self.best_ask_price = self.sorted_ask_prices[0]
+                    self.best_ask_volume = self.price_to_volume[self.best_ask_price]
+                    self.total_ask_volume -= volume
                 else:
                     self.best_ask_price = None
+                    self.best_ask_volume = None
+                    self.total_ask_volume = 0
         else:
             _ = self.price_to_orders_ids[price].remove(order_id)
         self.set_mid_price()
@@ -142,18 +176,23 @@ class Exchange:
         orders_at_price = self.price_to_orders_ids[price]
         if len(orders_at_price) == 1:
             del self.price_to_orders_ids[price]
+            del self.price_to_volume[price]
             if side == Side.BUY:
                 del self.sorted_bid_prices[-1]
                 if self.sorted_bid_prices:
                     self.best_bid_price = self.sorted_bid_prices[-1]
+                    self.best_bid_volume = self.price_to_volume[self.best_bid_price]
                 else:
                     self.best_bid_price = None
+                    self.best_bid_volume = None
             else:
                 del self.sorted_ask_prices[0]
                 if self.sorted_ask_prices:
                     self.best_ask_price = self.sorted_ask_prices[0]
+                    self.best_ask_volume = self.price_to_volume[self.best_ask_price]
                 else:
                     self.best_ask_price = None
+                    self.best_ask_volume = None
         else:
             _ = self.price_to_orders_ids[price].popleft()
         self.set_mid_price()
@@ -181,11 +220,12 @@ class Exchange:
             market_order_condition = False
         return market_order_condition
 
-    @staticmethod
-    def check_order_validity(order: Union[LimitOrder, MarketOrder]):
+    def check_order_validity(self, order: Union[LimitOrder, MarketOrder, CancelOrder]):
         if order.type == "L":
             return order.price > 0 and order.volume > 0
         elif order.type == "M":
             return order.volume > 0
+        elif order.type == 'C':
+            return order.order_id in self.order_id_to_order
         else:
             raise ValueError("Order Type not understood")
