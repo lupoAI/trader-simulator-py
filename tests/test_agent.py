@@ -24,3 +24,6 @@ def test_agent_has_cash_variable(exchange):
 def test_agent_has_stock_variable(exchange):
     agent = Agent(exchange)
     assert agent.stock == 0
+
+
+# TODO create tests for AgentFCN

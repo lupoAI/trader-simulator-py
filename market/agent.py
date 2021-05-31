@@ -1,7 +1,11 @@
+from numpy import log, exp
+
 from market.data_model import LimitOrder, MarketOrder, CancelOrder
 from market.data_model import OrderReceipt
 from market.data_model import Side
 from market.exchange import Exchange
+
+DAY_TRADING_MINUTES = 23400
 
 
 class Agent:
@@ -12,6 +16,7 @@ class Agent:
         self.open_limit_orders = {}
         self.cash = 0
         self.stock = 0
+        self.value_portfolio = 0
         # # TODO add info tracking for agents
         # self.best_bid_price = None
         # self.best_ask_price = None
@@ -78,15 +83,67 @@ class Agent:
         else:
             order.trade_volume(volume)
 
+    def compute_value_of_portfolio(self):
+        value = self.cash
+        if self.exchange.last_valid_mid_price is not None:
+            value += self.stock * self.exchange.last_valid_mid_price
+
 
 class AgentFCN(Agent):
 
-    def __init__(self, exchange: Exchange, f_param, c_param, n_param):
+    def __init__(self, exchange: Exchange, f_param: float, c_param: float, n_param: float,
+                 time_window: int, order_margin: float):
         super().__init__(exchange)
         self.f_param = f_param
         self.c_param = c_param
         self.n_param = n_param
+        self.time_window = time_window
+        self.order_margin = order_margin
+        self.current_fundamental_price = None
+        self.starting_price = None
+        self.current_mid_price = None
+        self.current_best_ask = None
+        self.current_best_bid = None
+        self.previous_mid_price = None
+        self.noise_sample = None
 
-    def decide_order(self):
-        # TODO add functionality of choice based on parameters
-        raise NotImplementedError
+    def submit_parameters(self):
+        return {'f_param': self.f_param,
+                'c_param': self.c_param,
+                'n_param': self.n_param,
+                'time_window': self.time_window,
+                'order_margin': self.order_margin}
+
+    def get_data(self, current_fundamental_price: float, starting_price: int, previous_mid_price: float,
+                 noise_sample: float):
+        self.current_fundamental_price = current_fundamental_price
+        self.starting_price = starting_price
+        self.current_mid_price = self.exchange.last_valid_mid_price
+        if self.current_mid_price is None:
+            self.current_mid_price = self.starting_price
+        self.current_best_bid = self.exchange.best_bid_price
+        if self.current_mid_price is None:
+            self.current_mid_price = self.starting_price
+        self.current_best_ask = self.exchange.best_ask_price
+        if self.current_best_ask is None:
+            self.current_best_ask = self.starting_price
+        self.previous_mid_price = previous_mid_price
+        if self.previous_mid_price is None:
+            self.previous_mid_price = self.starting_price
+        self.noise_sample = noise_sample
+
+    def submit_time_window(self):
+        return self.time_window
+
+    def decide_order(self, volume: int):
+        # TODO figure out what is T (DAY_TRADING_MINUTES)
+        # TODO add tests for this function
+        f = log(self.current_fundamental_price / self.current_mid_price) / DAY_TRADING_MINUTES
+        c = log(self.current_mid_price / self.previous_mid_price) / DAY_TRADING_MINUTES
+        n = self.noise_sample
+        r = (self.f_param * f + self.c_param * c + self.n_param * n) / (self.f_param + self.c_param + self.n_param)
+        future_price = self.current_mid_price * exp(r * self.time_window)
+        if future_price > self.current_mid_price:
+            return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin)), volume, True)
+        else:
+            return self.limit_order(Side.SELL, int(future_price * (1 + self.order_margin)), volume, True)

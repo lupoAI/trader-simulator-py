@@ -57,6 +57,13 @@ class Series:
         self.time_step += [time_step]
         self.price += [price]
 
+    def __getitem__(self, item):
+        return self.price[item]
+
+    def __len__(self):
+        return len(self.price)
+
+
 
 @dataclass(frozen=True)
 class MarketSnapshot:
