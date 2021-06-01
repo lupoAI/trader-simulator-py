@@ -64,7 +64,6 @@ class Series:
         return len(self.price)
 
 
-
 @dataclass(frozen=True)
 class MarketSnapshot:
     time_step: int
@@ -106,3 +105,27 @@ class MarketSnapshotSeries:
         self.price_to_volume_df = DataFrame(self.price_to_volume)
         self.price_to_volume_df.index = self.time_step
         self.price_to_volume_df.sort_index(axis=1, inplace=True)
+
+
+@dataclass
+class AgentsInfo:
+    f_param: List[float] = field(default_factory=list)
+    c_param: List[float] = field(default_factory=list)
+    n_param: List[float] = field(default_factory=list)
+    time_window: List[int] = field(default_factory=list)
+    order_margin: List[float] = field(default_factory=list)
+    cash: List[int] = field(default_factory=list)
+    stock: List[int] = field(default_factory=list)
+    value_portfolio: List[float] = field(default_factory=list)
+
+    def add_parameters(self, parameters: Dict):
+        self.f_param += [parameters['f_param']]
+        self.c_param += [parameters['c_param']]
+        self.n_param += [parameters['n_param']]
+        self.time_window += [parameters['time_window']]
+        self.order_margin += [parameters['order_margin']]
+
+    def add_attributes(self, attributes: Dict):
+        self.cash += [attributes['cash']]
+        self.stock += [attributes['stock']]
+        self.value_portfolio += [attributes['value_portfolio']]

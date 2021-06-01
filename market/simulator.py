@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+import numpy as np
 from numpy import exp, array
 from numpy.random import RandomState
 
@@ -38,10 +39,12 @@ class RandomSimulator(Simulator):
         size_matrix = (n_steps, trades_per_step)
         agents = rand_state.randint(0, self.n_agents, size=size_matrix)
         sides = rand_state.randint(1, 3, size=size_matrix)
-        adjustment = (sides - 1.5) * 0.1
-        sign = rand_state.randint(0, 2, size=size_matrix) * 2 - 1
         volume = 1
-        offset = rand_state.uniform(0, 0.03, size=size_matrix)
+        vol = 0.02
+        # TODO adjust so that in expectation we get a martingale
+        adjustment = 4 * vol ** 2 / 2
+        offset = rand_state.normal(0, vol, size=size_matrix)
+        multiplier = np.exp(offset + adjustment)
         orders_to_cancel = {}
         for i in range(n_steps):
             if i % snapshot_interval == 0 and i > 0:
@@ -50,11 +53,9 @@ class RandomSimulator(Simulator):
             orders_to_cancel[i] = []
             for j in range(trades_per_step):
                 if self.exchange.last_valid_mid_price is None:
-                    price = int((starting_price + adjustment[i, j])
-                                * (1 + sign[i, j] * offset[i, j]))
+                    price = int(starting_price * multiplier[i, j])
                 else:
-                    price = int((self.exchange.last_valid_mid_price + adjustment[i, j])
-                                * (1 + sign[i, j] * offset[i, j]))
+                    price = int(self.exchange.last_valid_mid_price * multiplier[i, j])
                 order_receipt = self.agents[agents[i, j]].limit_order(Side(sides[i, j]), price, volume, True)
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 

@@ -19,7 +19,7 @@ def test_simulator_fcn_runs(simulator_fcn_100):
     assert len(simulator_fcn_100.mid_price_series.price) == 1000
 
 
-def test_speed_simulator_1(random_simulator_100):
+def test_speed_random_simulator_1(random_simulator_100):
     start = time.time()
     random_simulator_100.run(1000, 10, 10000, 20, 60)
     end = time.time()
@@ -27,7 +27,7 @@ def test_speed_simulator_1(random_simulator_100):
     assert simulation_runtime < 0.6
 
 
-def test_speed_simulator_2(random_simulator_100):
+def test_speed_random_simulator_2(random_simulator_100):
     start = time.time()
     random_simulator_100.run(1000, 100, 10000, 20, 60)
     end = time.time()
@@ -35,11 +35,25 @@ def test_speed_simulator_2(random_simulator_100):
     assert simulation_runtime < 6
 
 
-def test_speed_simulator_3(random_simulator_100):
+def test_speed_random_simulator_3(random_simulator_100):
     start = time.time()
     random_simulator_100.run(10000, 10, 10000, 20, 60)
     end = time.time()
     simulation_runtime = end - start
     assert simulation_runtime < 6
 
-# TODO create tests for simulator fcn
+
+def test_speed_fcn_simulator_1(simulator_fcn_100):
+    start = time.time()
+    simulator_fcn_100.run(1000, 10, 20, 60)
+    end = time.time()
+    simulation_runtime = end - start
+    assert simulation_runtime < 0.6
+
+
+def test_speed_fcn_simulator_2(simulator_fcn_100):
+    start = time.time()
+    simulator_fcn_100.run(1000, 100, 20, 60)
+    end = time.time()
+    simulation_runtime = end - start
+    assert simulation_runtime < 6

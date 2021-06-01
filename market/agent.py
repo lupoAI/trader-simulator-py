@@ -5,7 +5,8 @@ from market.data_model import OrderReceipt
 from market.data_model import Side
 from market.exchange import Exchange
 
-DAY_TRADING_MINUTES = 23400
+# TODO figure out actual value
+DAY_TRADING_MINUTES = 4000#23400
 
 
 class Agent:
@@ -18,14 +19,15 @@ class Agent:
         self.stock = 0
         self.value_portfolio = 0
         # # TODO add info tracking for agents
+        
+
+    def market_order(self, side: Side, volume: int, return_receipt: bool = False):
         # self.best_bid_price = None
         # self.best_ask_price = None
         # self.best_bid_volume = None
         # self.best_ask_volume = None
         # self.total_bid_volume = 0
         # self.total_ask_volume = 0
-
-    def market_order(self, side: Side, volume: int, return_receipt: bool = False):
         mo = MarketOrder(volume, side)
         order_receipt = self.exchange.handle_order(self.id, mo)
         if order_receipt.outcome:
@@ -87,6 +89,7 @@ class Agent:
         value = self.cash
         if self.exchange.last_valid_mid_price is not None:
             value += self.stock * self.exchange.last_valid_mid_price
+        self.value_portfolio = value
 
 
 class AgentFCN(Agent):
@@ -113,6 +116,12 @@ class AgentFCN(Agent):
                 'n_param': self.n_param,
                 'time_window': self.time_window,
                 'order_margin': self.order_margin}
+
+    def submit_attributes(self):
+        self.compute_value_of_portfolio()
+        return {'cash': self.cash,
+                'stock': self.stock,
+                'value_portfolio': self.value_portfolio}
 
     def get_data(self, current_fundamental_price: float, starting_price: int, previous_mid_price: float,
                  noise_sample: float):
