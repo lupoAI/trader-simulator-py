@@ -192,16 +192,22 @@ class SimulatorPaper1(Simulator):
 
                 if side == 1:
                     best_bid = self.exchange.best_bid_price
-                    best_bid = best_bid if best_bid is not None else self.starting_price
-                    # order_volume = (quantity * self.agents[agent_id].stock / best_bid + 0.5)
-                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(best_bid * margin + 0.5),
-                                                                      1, True)
+                    if self.exchange.last_valid_mid_price is not None:
+                        best_bid = best_bid if best_bid is not None else int(
+                            self.exchange.last_valid_mid_price * 0.995 + 0.5)
+                    best_bid = best_bid if best_bid is not None else int(self.starting_price * 0.995 + 0.5)
+                    order_volume = (quantity * self.agents[agent_id].cash / best_bid + 0.5)
+                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(0.9975 * best_bid * margin + 0.5),  #  Maybe delte the 0.9975
+                                                                      order_volume, True)
                 else:
                     best_ask = self.exchange.best_ask_price
-                    best_ask = best_ask if best_ask is not None else self.starting_price
-                    # order_volume = int(quantity * self.agents[agent_id].stock + 0.5)
-                    order_receipt = self.agents[agent_id].limit_order(Side.SELL, int(best_ask * margin + 0.5),
-                                                                      1, True)
+                    if self.exchange.last_valid_mid_price is not None:
+                        best_ask = best_ask if best_ask is not None else int(
+                            self.exchange.last_valid_mid_price * 1.005 + 0.5)
+                    best_ask = best_ask if best_ask is not None else int(self.starting_price * 1.005 + 0.5)
+                    order_volume = int(quantity * self.agents[agent_id].stock + 0.5)
+                    order_receipt = self.agents[agent_id].limit_order(Side.SELL, int(1.0025 * best_ask * margin + 0.5), #  like above
+                                                                      order_volume, True)
 
                 order_id_to_exchange_order_id[idx] = order_receipt.order_id
                 self.mid_price_series.add(time, self.exchange.mid_price)
