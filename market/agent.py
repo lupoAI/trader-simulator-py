@@ -6,7 +6,7 @@ from market.data_model import Side
 from market.exchange import Exchange
 
 # TODO figure out actual value
-DAY_TRADING_MINUTES = 4000#23400
+DAY_TRADING_MINUTES = 4000  # 23400
 
 
 class Agent:
@@ -19,7 +19,6 @@ class Agent:
         self.stock = 0
         self.value_portfolio = 0
         # # TODO add info tracking for agents
-        
 
     def market_order(self, side: Side, volume: int, return_receipt: bool = False):
         # self.best_bid_price = None
@@ -91,6 +90,10 @@ class Agent:
             value += self.stock * self.exchange.last_valid_mid_price
         self.value_portfolio = value
 
+    def endow(self, cash, stock):
+        self.cash += cash
+        self.stock += stock
+
 
 class AgentFCN(Agent):
 
@@ -153,6 +156,6 @@ class AgentFCN(Agent):
         r = (self.f_param * f + self.c_param * c + self.n_param * n) / (self.f_param + self.c_param + self.n_param)
         future_price = self.current_mid_price * exp(r * self.time_window)
         if future_price > self.current_mid_price:
-            return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin)), volume, True)
+            return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin) + 0.5), volume, True)
         else:
-            return self.limit_order(Side.SELL, int(future_price * (1 + self.order_margin)), volume, True)
+            return self.limit_order(Side.SELL, int(future_price * (1 + self.order_margin) + 0.5), volume, True)

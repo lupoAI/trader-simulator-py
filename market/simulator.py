@@ -1,7 +1,8 @@
 from dataclasses import dataclass, field
+from math import gamma
 
 import numpy as np
-from numpy import exp, array
+from numpy import exp, array, log, power, cumsum
 from numpy.random import RandomState
 
 from market.agent import Agent, AgentFCN
@@ -53,9 +54,9 @@ class RandomSimulator(Simulator):
             orders_to_cancel[i] = []
             for j in range(trades_per_step):
                 if self.exchange.last_valid_mid_price is None:
-                    price = int(starting_price * multiplier[i, j])
+                    price = int(starting_price * multiplier[i, j] + 0.5)
                 else:
-                    price = int(self.exchange.last_valid_mid_price * multiplier[i, j])
+                    price = int(self.exchange.last_valid_mid_price * multiplier[i, j] + 0.5)
                 order_receipt = self.agents[agents[i, j]].limit_order(Side(sides[i, j]), price, volume, True)
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 
@@ -131,4 +132,79 @@ class SimulatorFCN(Simulator):
             if i >= cancel_order_interval:
                 for agent_id, order_id in orders_to_cancel[i - cancel_order_interval]:
                     self.agents[agent_id].cancel_order(order_id)
+        self.market_snapshots.format_price_to_volume()
+
+
+class SimulatorPaper1(Simulator):
+
+    def __init__(self, exchange: Exchange, n_agents: int, starting_price: int, starting_cash: int, starting_stock: int):
+        super().__init__(exchange, n_agents)
+        self.starting_price = starting_price
+        self.starting_cash = starting_cash
+        self.starting_stock = starting_stock
+        self.agents = [Agent(self.exchange) for _ in range(self.n_agents)]
+        for agent in self.agents:
+            agent.endow(starting_cash, starting_stock)
+
+    def run(self, time_simulation: int, snapshot_interval: int, mean_wait_time: int, margin_vol: float, beta: float,
+            lifespan_order: int, random_seed: int = 42):
+        super().clear_cache()
+        rand_state = RandomState(random_seed)
+        number_draws = 2 * int(time_simulation / mean_wait_time)
+        rand_uniform = rand_state.uniform(size=number_draws)
+        eta = mean_wait_time / gamma(1 / beta + 1)
+        weibull_waiting_times = eta * power(-log(rand_uniform), 1 / beta)
+        weibull_order_times = cumsum(weibull_waiting_times)
+        if weibull_order_times[-1] < time_simulation:
+            raise ValueError(f"Not enough time order simulation: {weibull_order_times[-1]}")
+        weibull_order_times = (weibull_order_times[weibull_order_times <= time_simulation] + 0.5).astype(int)
+        number_trades = len(weibull_order_times)
+        chosen_agents = rand_state.randint(0, len(self.agents), size=number_trades)
+        chosen_side = rand_state.randint(1, 3, size=number_trades)
+        chosen_margin = rand_state.normal(1, margin_vol, size=number_trades)
+        chosen_quantity = rand_state.uniform(size=number_trades)
+        orders = [(x, "O", i) for i, x in enumerate(weibull_order_times)]
+        cancellations = [(x + lifespan_order, "C", i) for i, x in enumerate(weibull_order_times)]
+        actions = sorted(orders + cancellations)
+
+        order_id_to_exchange_order_id = {}
+        previous_time = 0
+        for action in actions:
+
+            time = action[0]
+            type_action = action[1]
+            idx = action[2]
+
+            if time // snapshot_interval > previous_time // snapshot_interval:
+                self.save_market_snapshot(time)
+            previous_time = time
+
+            #  TODO add cancel orders
+            #  TODO add trade time statistics
+            agent_id = chosen_agents[idx]
+            side = chosen_side[idx]
+            margin = chosen_margin[idx]
+            quantity = chosen_quantity[idx]
+            if type_action == "C":
+                order_id = order_id_to_exchange_order_id[idx]
+                self.agents[agent_id].cancel_order(order_id)
+            elif type_action == "O":
+
+                if side == 1:
+                    best_bid = self.exchange.best_bid_price
+                    best_bid = best_bid if best_bid is not None else self.starting_price
+                    # order_volume = (quantity * self.agents[agent_id].stock / best_bid + 0.5)
+                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(best_bid * margin + 0.5),
+                                                                      1, True)
+                else:
+                    best_ask = self.exchange.best_ask_price
+                    best_ask = best_ask if best_ask is not None else self.starting_price
+                    # order_volume = int(quantity * self.agents[agent_id].stock + 0.5)
+                    order_receipt = self.agents[agent_id].limit_order(Side.SELL, int(best_ask * margin + 0.5),
+                                                                      1, True)
+
+                order_id_to_exchange_order_id[idx] = order_receipt.order_id
+                self.mid_price_series.add(time, self.exchange.mid_price)
+            else:
+                raise ValueError("Wrong action type")
         self.market_snapshots.format_price_to_volume()

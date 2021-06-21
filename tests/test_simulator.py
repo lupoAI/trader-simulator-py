@@ -24,7 +24,7 @@ def test_speed_random_simulator_1(random_simulator_100):
     random_simulator_100.run(1000, 10, 10000, 20, 60)
     end = time.time()
     simulation_runtime = end - start
-    assert simulation_runtime < 0.6
+    assert simulation_runtime < 1
 
 
 def test_speed_random_simulator_2(random_simulator_100):
@@ -48,7 +48,7 @@ def test_speed_fcn_simulator_1(simulator_fcn_100):
     simulator_fcn_100.run(1000, 10, 20, 60)
     end = time.time()
     simulation_runtime = end - start
-    assert simulation_runtime < 0.6
+    assert simulation_runtime < 1
 
 
 def test_speed_fcn_simulator_2(simulator_fcn_100):
