@@ -115,7 +115,6 @@ class Exchange:
             matched_agent = self.agent_id_to_agent[matched_agent_id]
             matched_volume = min(matched_order.volume, volume_left)
             self.price_to_volume[price] -= matched_volume
-            # here we need to reset the best volume
             matched_agent.handle_limit_execution(matched_order_id, matched_volume)
             volume_left -= matched_volume
             volume_executed += matched_volume

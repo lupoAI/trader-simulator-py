@@ -43,9 +43,10 @@ class RandomSimulator(Simulator):
         volume = 1
         vol = 0.02
         # TODO adjust so that in expectation we get a martingale
-        adjustment = 4 * vol ** 2 / 2
+        mu = 0
+        vol_adjustment = -vol ** 2 / 2
         offset = rand_state.normal(0, vol, size=size_matrix)
-        multiplier = np.exp(offset + adjustment)
+        multiplier = np.exp(offset + vol_adjustment + mu)
         orders_to_cancel = {}
         for i in range(n_steps):
             if i % snapshot_interval == 0 and i > 0:
@@ -179,7 +180,6 @@ class SimulatorPaper1(Simulator):
                 self.save_market_snapshot(time)
             previous_time = time
 
-            #  TODO add cancel orders
             #  TODO add trade time statistics
             agent_id = chosen_agents[idx]
             side = chosen_side[idx]
@@ -197,7 +197,7 @@ class SimulatorPaper1(Simulator):
                             self.exchange.last_valid_mid_price * 0.995 + 0.5)
                     best_bid = best_bid if best_bid is not None else int(self.starting_price * 0.995 + 0.5)
                     order_volume = (quantity * self.agents[agent_id].cash / best_bid + 0.5)
-                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(0.9975 * best_bid * margin + 0.5),  #  Maybe delte the 0.9975
+                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(0.9975 * best_bid * margin + 0.5),  #  Maybe delete the 0.9975
                                                                       order_volume, True)
                 else:
                     best_ask = self.exchange.best_ask_price
