@@ -42,7 +42,6 @@ class RandomSimulator(Simulator):
         sides = rand_state.randint(1, 3, size=size_matrix)
         volume = 1
         vol = 0.02
-        # TODO adjust so that in expectation we get a martingale
         mu = 0
         vol_adjustment = -vol ** 2 / 2
         offset = rand_state.normal(0, vol, size=size_matrix)
@@ -180,7 +179,6 @@ class SimulatorPaper1(Simulator):
                 self.save_market_snapshot(time)
             previous_time = time
 
-            #  TODO add trade time statistics
             agent_id = chosen_agents[idx]
             side = chosen_side[idx]
             margin = chosen_margin[idx]
@@ -197,7 +195,7 @@ class SimulatorPaper1(Simulator):
                             self.exchange.last_valid_mid_price * 0.995 + 0.5)
                     best_bid = best_bid if best_bid is not None else int(self.starting_price * 0.995 + 0.5)
                     order_volume = (quantity * self.agents[agent_id].cash / best_bid + 0.5)
-                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(0.9975 * best_bid * margin + 0.5),  #  Maybe delete the 0.9975
+                    order_receipt = self.agents[agent_id].limit_order(Side.BUY, int(0.9975 * best_bid * margin + 0.5),
                                                                       order_volume, True)
                 else:
                     best_ask = self.exchange.best_ask_price
@@ -206,7 +204,7 @@ class SimulatorPaper1(Simulator):
                             self.exchange.last_valid_mid_price * 1.005 + 0.5)
                     best_ask = best_ask if best_ask is not None else int(self.starting_price * 1.005 + 0.5)
                     order_volume = int(quantity * self.agents[agent_id].stock + 0.5)
-                    order_receipt = self.agents[agent_id].limit_order(Side.SELL, int(1.0025 * best_ask * margin + 0.5), #  like above
+                    order_receipt = self.agents[agent_id].limit_order(Side.SELL, int(1.0025 * best_ask * margin + 0.5),
                                                                       order_volume, True)
 
                 order_id_to_exchange_order_id[idx] = order_receipt.order_id
@@ -214,3 +212,7 @@ class SimulatorPaper1(Simulator):
             else:
                 raise ValueError("Wrong action type")
         self.market_snapshots.format_price_to_volume()
+
+
+class SimulatorPaper2(Simulator):
+    pass

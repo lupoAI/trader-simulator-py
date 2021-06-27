@@ -5,7 +5,7 @@ if __name__ == "__main__":
     from market.exchange import Exchange
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.00001)
+    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001)
     simulator_fcn.run(1000, 10, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()
@@ -27,7 +27,7 @@ if __name__ == "__main__":
     from market.exchange import Exchange
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.00001)
+    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001)
     simulator_fcn.run(10000, 5, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()

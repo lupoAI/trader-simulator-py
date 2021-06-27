@@ -1,7 +1,7 @@
 from typing import Union
 
 import matplotlib.pyplot as plt
-from numpy import meshgrid, unique, nanmax, full, nan
+from numpy import meshgrid, unique, nanmax, full, nan, array
 
 from market.data_model import AgentsInfo
 from market.simulator import Simulator, SimulatorFCN
@@ -68,11 +68,17 @@ class VisualizeSimulationFCN(VisualizeSimulation):
         ax3 = plt.subplot2grid((2, 6), (0, 4), colspan=2)
         ax4 = plt.subplot2grid((2, 6), (1, 1), colspan=2)
         ax5 = plt.subplot2grid((2, 6), (1, 3), colspan=2)
-        ax1.scatter(self.agents_info.f_param, self.agents_info.__getattribute__(attribute), color='orange', marker='+')
+        f_param = array(self.agents_info.f_param)
+        c_param = array(self.agents_info.c_param)
+        n_param = array(self.agents_info.n_param)
+        f_w = f_param / (f_param + c_param + n_param)
+        c_w = c_param / (f_param + c_param + n_param)
+        n_w = n_param / (f_param + c_param + n_param)
+        ax1.scatter(f_w, self.agents_info.__getattribute__(attribute), color='orange', marker='+')
         ax1.set_xlabel('f_param')
-        ax2.scatter(self.agents_info.c_param, self.agents_info.__getattribute__(attribute), color='green', marker='h')
+        ax2.scatter(c_w, self.agents_info.__getattribute__(attribute), color='green', marker='h')
         ax2.set_xlabel('c_param')
-        ax3.scatter(self.agents_info.n_param, self.agents_info.__getattribute__(attribute), color='red', marker='^')
+        ax3.scatter(n_w, self.agents_info.__getattribute__(attribute), color='red', marker='^')
         ax3.set_xlabel('n_param')
         ax4.scatter(self.agents_info.time_window, self.agents_info.__getattribute__(attribute), color='purple',
                     marker='x')
@@ -89,5 +95,3 @@ class VisualizeSimulationFCN(VisualizeSimulation):
     def add_fund(self):
         ind = list(range(len(self.fundamental_price)))
         plt.plot(ind, self.fundamental_price, color='red', label='fundamental price')
-
-
