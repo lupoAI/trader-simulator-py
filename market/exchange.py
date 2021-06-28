@@ -8,7 +8,8 @@ from market.data_model import LimitOrder, MarketOrder, CancelOrder
 from market.data_model import OrderReceipt
 from market.data_model import Side
 
-
+# TODO add traded volume tracking
+# TODO add moving averages
 class Exchange:
 
     def __init__(self):
