@@ -1,4 +1,4 @@
-from analysis.visualizer import VisualizeSimulationFCN
+from analysis.simulation_visualizer import VisualizeSimulationFCN
 
 if __name__ == "__main__":
     from market.simulator import SimulatorFCN

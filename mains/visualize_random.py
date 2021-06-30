@@ -1,4 +1,4 @@
-from analysis.visualizer import VisualizeSimulation
+from analysis.simulation_visualizer import VisualizeSimulation
 
 if __name__ == "__main__":
     from market.simulator import RandomSimulator

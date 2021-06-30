@@ -1,4 +1,4 @@
-from analysis.visualizer import VisualizeSimulation
+from analysis.simulation_visualizer import VisualizeSimulation
 from market.exchange import Exchange
 from market.simulator import SimulatorPaper1
 
