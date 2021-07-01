@@ -52,5 +52,6 @@ class LossFunction
     def compute_distribution_loss(self):
         target = self.target_facts.density
         simulation = self.target_facts.density
-        loss = wasserstein_distance()
+        loss = wasserstein_distance(target.index.values, simulation.index.values,
+                                    target.values, simulation.values)
         self.distribution_loss = loss
