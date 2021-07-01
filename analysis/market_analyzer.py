@@ -2,6 +2,15 @@ import numpy as np
 import pandas as pd
 
 
+class StylizedFacts:
+
+    def __init__(self, correlation: pd.DataFrame, density: pd.Series):
+        self.auto_correlation = correlation['Auto-Correlation']
+        self.volatility_clustering = correlation['Volatility Clustering']
+        self.leverage_effect = correlation['Leverage_effect']
+        self.density = density
+
+
 class MarketDataAnalyzer:
 
     def __init__(self, market_data):
@@ -18,7 +27,7 @@ class MarketDataAnalyzer:
         rets = rets.drop(columns=['Date Shifted'])
         lags = list(range(1, 11))
         columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
-        stylized_facts = pd.DataFrame(index=lags, columns=columns)
+        correlation_facts = pd.DataFrame(index=lags, columns=columns)
 
         for lag in lags:
             temp = rets.copy()
@@ -31,9 +40,9 @@ class MarketDataAnalyzer:
             volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
             leverage_effect = np.corrcoef(temp['Rets Sq'], temp['Rets Shifted'])
 
-            stylized_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
-            stylized_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
-            stylized_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
+            correlation_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
+            correlation_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
+            correlation_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
 
         standard_rets = rets['Rets'].dropna().values
         standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
@@ -42,7 +51,7 @@ class MarketDataAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = (stylized_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density)
 
         return stylized_facts
 
@@ -52,15 +61,15 @@ class MarketDataAnalyzer:
         close['Rets Sq'] = close['Rets'] ** 2
         lags = list(range(1, 11))
         columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
-        stylized_facts = pd.DataFrame(index=lags, columns=columns)
+        correlation_facts = pd.DataFrame(index=lags, columns=columns)
         for lag in lags:
             ac = np.corrcoef(close['Rets'], close['Rets'].shift(lag))
             vc = np.corrcoef(close['Rets Sq'], close['Rets Sq'].shift(lag))
             le = np.corrcoef(close['Rets Sq'], close['Rets'].shift(lag))
 
-            stylized_facts.at[lag, 'Auto-Correlation'] = ac[0, 1]
-            stylized_facts.at[lag, 'Volatility Clustering'] = vc[0, 1]
-            stylized_facts.at[lag, 'Leverage Effect'] = le[0, 1]
+            correlation_facts.at[lag, 'Auto-Correlation'] = ac[0, 1]
+            correlation_facts.at[lag, 'Volatility Clustering'] = vc[0, 1]
+            correlation_facts.at[lag, 'Leverage Effect'] = le[0, 1]
 
         standard_rets = close['Rets'].dropna().values
         standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
@@ -69,7 +78,7 @@ class MarketDataAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = (stylized_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density)
 
         return stylized_facts
 
@@ -85,7 +94,7 @@ class SimulatedMarketAnalyzer:
         rets['Rets Sq'] = rets['Rets'] ** 2
         lags = list(range(1, 11))
         columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
-        stylized_facts = pd.DataFrame(index=lags, columns=columns)
+        correlation_facts = pd.DataFrame(index=lags, columns=columns)
 
         for lag in lags:
             temp = rets.copy()
@@ -96,9 +105,9 @@ class SimulatedMarketAnalyzer:
             volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
             leverage_effect = np.corrcoef(temp['Rets Sq'], temp['Rets Shifted'])
 
-            stylized_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
-            stylized_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
-            stylized_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
+            correlation_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
+            correlation_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
+            correlation_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
 
         standard_rets = rets['Rets'].dropna().values
         standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
@@ -107,7 +116,7 @@ class SimulatedMarketAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = (stylized_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density)
 
         return stylized_facts
 
