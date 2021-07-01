@@ -35,8 +35,14 @@ class MarketDataAnalyzer:
             stylized_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
             stylized_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
 
-        # TODO add distribution measurement
-        # rets1m['Rets Standard'] = (rets1m['Rets'] - rets1m['Rets'].mean()) / rets1m['Rets'].std()
+        standard_rets = rets['Rets'].dropna().values
+        standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
+        bins = np.linspace(-50, 50, 100)
+        histogram = np.histogram(standard_rets, bins=bins, density=True)
+        center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
+        density = pd.Series(histogram[0], index=center_hist)
+
+        stylized_facts = (stylized_facts, density)
 
         return stylized_facts
 
@@ -56,9 +62,55 @@ class MarketDataAnalyzer:
             stylized_facts.at[lag, 'Volatility Clustering'] = vc[0, 1]
             stylized_facts.at[lag, 'Leverage Effect'] = le[0, 1]
 
-        # TODO add distribution measurement
+        standard_rets = close['Rets'].dropna().values
+        standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
+        bins = np.linspace(-50, 50, 100)
+        histogram = np.histogram(standard_rets, bins=bins, density=True)
+        center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
+        density = pd.Series(histogram[0], index=center_hist)
+
+        stylized_facts = (stylized_facts, density)
 
         return stylized_facts
+
+
+class SimulatedMarketAnalyzer:
+
+    def __init__(self, market_prices):
+        self.market_prices = market_prices
+
+    def get_market_metrics(self, returns_interval):
+        rets = pd.DataFrame(self.market_prices, columns=['Close'])
+        rets['Rets'] = rets['Close'] / rets['Close'].shift(returns_interval) - 1
+        rets['Rets Sq'] = rets['Rets'] ** 2
+        lags = list(range(1, 11))
+        columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
+        stylized_facts = pd.DataFrame(index=lags, columns=columns)
+
+        for lag in lags:
+            temp = rets.copy()
+            temp['Rets Shifted'] = temp['Rets'].shift(lag * returns_interval)
+            temp['Rets Sq Shifted'] = temp['Rets Sq'].shift(lag * returns_interval)
+
+            auto_correlation = np.corrcoef(temp['Rets'], temp['Rets Shifted'])
+            volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
+            leverage_effect = np.corrcoef(temp['Rets Sq'], temp['Rets Shifted'])
+
+            stylized_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
+            stylized_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
+            stylized_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
+
+        standard_rets = rets['Rets'].dropna().values
+        standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
+        bins = np.linspace(-50, 50, 100)
+        histogram = np.histogram(standard_rets, bins=bins, density=True)
+        center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
+        density = pd.Series(histogram[0], index=center_hist)
+
+        stylized_facts = (stylized_facts, density)
+
+        return stylized_facts
+
 
 
 if __name__ == '__main__':
