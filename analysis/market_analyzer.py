@@ -4,11 +4,12 @@ import pandas as pd
 
 class StylizedFacts:
 
-    def __init__(self, correlation: pd.DataFrame, density: pd.Series):
+    def __init__(self, correlation: pd.DataFrame, density: pd.Series, rets: np.array):
         self.auto_correlation = correlation['Auto-Correlation']
         self.volatility_clustering = correlation['Volatility Clustering']
-        self.leverage_effect = correlation['Leverage_effect']
+        self.leverage_effect = correlation['Leverage Effect']
         self.density = density
+        self.rets = rets
 
 
 class MarketDataAnalyzer:
@@ -35,6 +36,7 @@ class MarketDataAnalyzer:
             temp['Rets Sq Shifted'] = temp['Rets Sq'].shift(lag * returns_interval)
             temp['Date Shifted'] = temp['Date'].shift(lag * returns_interval)
             temp = temp.loc[temp['Date'] == temp['Date Shifted']]
+            temp = temp.dropna()
 
             auto_correlation = np.corrcoef(temp['Rets'], temp['Rets Shifted'])
             volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
@@ -51,7 +53,7 @@ class MarketDataAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = StylizedFacts(correlation_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
 
         return stylized_facts
 
@@ -63,13 +65,18 @@ class MarketDataAnalyzer:
         columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
         correlation_facts = pd.DataFrame(index=lags, columns=columns)
         for lag in lags:
-            ac = np.corrcoef(close['Rets'], close['Rets'].shift(lag))
-            vc = np.corrcoef(close['Rets Sq'], close['Rets Sq'].shift(lag))
-            le = np.corrcoef(close['Rets Sq'], close['Rets'].shift(lag))
+            temp = close.copy()
+            temp['Rets Shifted'] = temp['Rets'].shift(lag)
+            temp['Rets Sq Shifted'] = temp['Rets Sq'].shift(lag)
+            temp = temp.dropna()
 
-            correlation_facts.at[lag, 'Auto-Correlation'] = ac[0, 1]
-            correlation_facts.at[lag, 'Volatility Clustering'] = vc[0, 1]
-            correlation_facts.at[lag, 'Leverage Effect'] = le[0, 1]
+            auto_correlation = np.corrcoef(temp['Rets'], temp['Rets Shifted'])
+            volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
+            leverage_effect = np.corrcoef(temp['Rets Sq'], temp['Rets Shifted'])
+
+            correlation_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
+            correlation_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
+            correlation_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
 
         standard_rets = close['Rets'].dropna().values
         standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
@@ -78,7 +85,7 @@ class MarketDataAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = StylizedFacts(correlation_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
 
         return stylized_facts
 
@@ -100,6 +107,7 @@ class SimulatedMarketAnalyzer:
             temp = rets.copy()
             temp['Rets Shifted'] = temp['Rets'].shift(lag * returns_interval)
             temp['Rets Sq Shifted'] = temp['Rets Sq'].shift(lag * returns_interval)
+            temp = temp.dropna()
 
             auto_correlation = np.corrcoef(temp['Rets'], temp['Rets Shifted'])
             volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
@@ -116,11 +124,12 @@ class SimulatedMarketAnalyzer:
         center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
         density = pd.Series(histogram[0], index=center_hist)
 
-        stylized_facts = StylizedFacts(correlation_facts, density)
+        stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
 
         return stylized_facts
 
 
+# TODO add something to visualize the market
 
 if __name__ == '__main__':
     import pickle

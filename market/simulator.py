@@ -17,6 +17,7 @@ class Simulator:
     n_agents: int
     market_snapshots: MarketSnapshotSeries = field(default=MarketSnapshotSeries(), init=False)
     mid_price_series: Series = field(default=Series(), init=False)
+    last_mid_price_series: Series = field(default=Series(), init=False)
 
     def save_market_snapshot(self, time_step: int):
         market_snapshot = self.exchange.return_market_snapshot()
@@ -61,6 +62,7 @@ class RandomSimulator(Simulator):
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 
             self.mid_price_series.add(i, self.exchange.mid_price)
+            self.last_mid_price_series.add(i, self.exchange.last_valid_mid_price)
 
             if i >= cancel_order_interval:
                 for agent_id, order_id in orders_to_cancel[i - cancel_order_interval]:
@@ -72,14 +74,23 @@ class RandomSimulator(Simulator):
 class SimulatorFCN(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
-                 random_seed: int = 42):
+                 scale_fund=None, scale_chart=None, scale_noise=None, random_seed: int = 42):
         super().__init__(exchange, n_agents)
         self.fund_price_vol = fund_price_vol
         self.initial_fund_price = initial_fund_price
         rand_state = RandomState(random_seed)
-        self.scale_fund = rand_state.normal(0.3, 0.03)
-        self.scale_chart = rand_state.normal(0.3, 0.03)
-        self.scale_noise = rand_state.normal(0.3, 0.03)
+        if scale_fund is not None:
+            self.scale_fund = scale_fund
+        else:
+            self.scale_fund = rand_state.normal(0.3, 0.03)
+        if scale_chart is not None:
+            self.scale_chart = scale_chart
+        else:
+            self.scale_chart = rand_state.normal(0.3, 0.03)
+        if scale_noise is not None:
+            self.scale_noise = scale_noise
+        else:
+            self.scale_noise = rand_state.normal(0.3, 0.03)
         self.agents_fcn = rand_state.exponential(size=(n_agents, 3))
         self.agents_fcn *= array([[self.scale_fund, self.scale_chart, self.scale_noise]])
         self.agents_time_window = rand_state.randint(500, 1001, size=(n_agents,))
@@ -121,13 +132,14 @@ class SimulatorFCN(Simulator):
                 if time_window > i - 1:
                     previous_price = None
                 else:
-                    previous_price = self.mid_price_series[-time_window]
+                    previous_price = self.last_mid_price_series[-time_window]
                 self.agents[agents[i, j]].get_data(self.fund_price_series[i], self.initial_fund_price, previous_price,
                                                    agents_noise[i, j])
                 order_receipt = self.agents[agents[i, j]].decide_order(agents_volume[i, j])
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 
             self.mid_price_series.add(i, self.exchange.mid_price)
+            self.last_mid_price_series.add(i, self.exchange.last_valid_mid_price)
 
             if i >= cancel_order_interval:
                 for agent_id, order_id in orders_to_cancel[i - cancel_order_interval]:
@@ -212,7 +224,3 @@ class SimulatorPaper1(Simulator):
             else:
                 raise ValueError("Wrong action type")
         self.market_snapshots.format_price_to_volume()
-
-
-class SimulatorPaper2(Simulator):
-    pass

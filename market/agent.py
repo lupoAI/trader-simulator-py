@@ -98,7 +98,7 @@ class Agent:
 class AgentFCN(Agent):
 
     def __init__(self, exchange: Exchange, f_param: float, c_param: float, n_param: float,
-                 time_window: int, order_margin: float) -> object:
+                 time_window: int, order_margin: float):
         super().__init__(exchange)
         self.f_param = f_param
         self.c_param = c_param

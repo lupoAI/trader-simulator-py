@@ -16,7 +16,9 @@
 # out of the use of this software, even if advised of the possibility of
 # such damage.
 
-import jax.numpy as np
+# TODO figure out why it gives an error and fix
+# import jax.numpy as np
+import numpy as np
 
 
 def wasserstein_distance(u_values, v_values, u_weights=None, v_weights=None):

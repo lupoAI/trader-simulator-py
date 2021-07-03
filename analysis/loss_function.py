@@ -2,7 +2,7 @@ from analysis.market_analyzer import StylizedFacts
 from utilities.scipy_utils import wasserstein_distance
 
 
-class LossFunction
+class LossFunction:
 
     def __init__(self, target_facts: StylizedFacts, simulated_facts: StylizedFacts):
         self.target_facts = target_facts
@@ -26,7 +26,8 @@ class LossFunction
         total_loss += self.auto_correlation_loss
         total_loss += self.volatility_clustering_loss
         total_loss += self.leverage_effect_loss
-        total_loss += self.distribution_loss
+        # Scale the distribution function
+        total_loss += self.distribution_loss / 100
         total_loss /= 4
         self.total_loss = total_loss
         return total_loss
@@ -41,17 +42,20 @@ class LossFunction
         target = self.target_facts.volatility_clustering
         simulation = self.simulated_facts.volatility_clustering
         loss = ((target.values - simulation.values) ** 2).mean()
-        self.auto_correlation_loss = loss
+        self.volatility_clustering_loss = loss
 
     def compute_leverage_effect_loss(self):
         target = self.target_facts.leverage_effect
         simulation = self.simulated_facts.leverage_effect
         loss = ((target.values - simulation.values) ** 2).mean()
-        self.auto_correlation_loss = loss
+        self.leverage_effect_loss = loss
 
     def compute_distribution_loss(self):
-        target = self.target_facts.density
-        simulation = self.target_facts.density
-        loss = wasserstein_distance(target.index.values, simulation.index.values,
-                                    target.values, simulation.values)
+        # target = self.target_facts.density
+        # simulation = self.simulated_facts.density
+        # loss = wasserstein_distance(target.index.values, simulation.index.values,
+        #                             target.values, simulation.values)
+        target = self.target_facts.rets
+        simulation = self.simulated_facts.rets
+        loss = wasserstein_distance(target, simulation)
         self.distribution_loss = loss
