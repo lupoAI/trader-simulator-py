@@ -1,5 +1,7 @@
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+from typing import Union
 
 
 class StylizedFacts:
@@ -129,30 +131,65 @@ class SimulatedMarketAnalyzer:
         return stylized_facts
 
 
-# TODO add something to visualize the market
+class MarketVisualizer:
 
-if __name__ == '__main__':
-    import pickle
+    def __init__(self, market_prices, is_simulated=False):
+        self.market_prices = market_prices
+        self.is_simulated = is_simulated
+        if not is_simulated:
+            self.market_analyzer = MarketDataAnalyzer(self.market_prices)
+            self.market_prices = self.market_prices['Close']
+        else:
+            self.market_analyzer = SimulatedMarketAnalyzer(self.market_prices)
 
-    headers = ['Open', 'High', 'Low', 'Close']
-    data = pd.read_csv('../data/spx/SPX_1min.txt', header=None, index_col=0, parse_dates=[0])
-    data = data.drop(columns=[5])
-    data.columns = headers
+    def visualize_market(self, returns_interval: Union[int, str], save_name: Union[str, None] = None):
+        if returns_interval == '1d' and not self.is_simulated:
+            stylized_facts = self.market_analyzer.get_daily_market_metrics()
+        elif returns_interval == '1d' and self.is_simulated:
+            raise ValueError('1d is only available for real market data')
+        else:
+            stylized_facts = self.market_analyzer.get_market_metrics(returns_interval)
+        ax1 = plt.subplot2grid(shape=(3, 6), loc=(0, 0), colspan=6)
+        ax2 = plt.subplot2grid((3, 6), (1, 0), colspan=2)
+        ax3 = plt.subplot2grid((3, 6), (1, 2), colspan=2)
+        ax4 = plt.subplot2grid((3, 6), (1, 4), colspan=2)
+        ax5 = plt.subplot2grid((3, 6), (2, 0), colspan=6)
+        ax1.plot(self.market_prices, color='green')
+        ax1.grid(True)
+        ax1.set_title('Price', size=10)
+        ax2.plot(stylized_facts.auto_correlation, color='red')
+        ax2.grid(True)
+        ax2.set_xticks(list(range(1, 11)))
+        ax2.set_title('Auto-Correlation', size=10)
+        ax3.plot(stylized_facts.volatility_clustering, color='orange')
+        ax3.grid(True)
+        ax3.set_xticks(list(range(1, 11)))
+        ax3.set_title('Volatility Clustering', size=10)
+        ax4.plot(stylized_facts.leverage_effect, color='purple')
+        ax4.grid(True)
+        ax4.set_xticks(list(range(1, 11)))
+        ax4.set_title('Leverage Effect', size=10)
+        bins = np.linspace(-50, 50, 1000)
+        centers = (bins[1:] + bins[:-1]) / 2
+        normal_distribution = normal_pdf(centers)
+        ax5.hist(stylized_facts.rets, bins=bins, density=True)
+        ax5.plot(centers, normal_distribution, label='Normal PDF')
+        ax5.set_xlim(-5, 5)
+        ax5.set_xticks(list(range(-5, 6)))
+        ax5.set_title('Return Distribution', size=10)
+        plt.subplots_adjust(hspace=0.55, wspace=1)
+        if self.is_simulated:
+            plt.suptitle(f'Simulated Market facts for {returns_interval} periods returns')
+        else:
+            plt.suptitle(f'SPX facts for {returns_interval} periods returns')
+        plt.legend()
+        if save_name is not None:
+            plt.savefig(save_name)
+        plt.show()
 
-    market_analyzer = MarketDataAnalyzer(data)
-    features_1m = market_analyzer.get_market_metrics(1)
-    features_5m = market_analyzer.get_market_metrics(5)
-    features_15m = market_analyzer.get_market_metrics(15)
-    features_30m = market_analyzer.get_market_metrics(30)
-    features_1d = market_analyzer.get_daily_market_metrics()
 
-    with open('../data/spx_processed/features_1m.pickle', 'wb') as f_1m:
-        pickle.dump(features_1m, f_1m)
-    with open('../data/spx_processed/features_5m.pickle', 'wb') as f_5m:
-        pickle.dump(features_5m, f_5m)
-    with open('../data/spx_processed/features_15m.pickle', 'wb') as f_15m:
-        pickle.dump(features_15m, f_15m)
-    with open('../data/spx_processed/features_30m.pickle', 'wb') as f_30m:
-        pickle.dump(features_30m, f_30m)
-    with open('../data/spx_processed/features_1d.pickle', 'wb') as f_1d:
-        pickle.dump(features_1d, f_1d)
+def normal_pdf(values):
+    return np.exp(-values ** 2 / 2) / np.sqrt(2 * np.pi)
+
+
+
