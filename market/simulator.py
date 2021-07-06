@@ -74,9 +74,10 @@ class RandomSimulator(Simulator):
 class SimulatorFCN(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
-                 scale_fund=None, scale_chart=None, scale_noise=None, random_seed: int = 42):
+                 scale_fund=None, scale_chart=None, scale_noise=None, fund_price_trend=0, random_seed: int = 42):
         super().__init__(exchange, n_agents)
         self.fund_price_vol = fund_price_vol
+        self.fund_price_trend = fund_price_trend
         self.initial_fund_price = initial_fund_price
         rand_state = RandomState(random_seed)
         if scale_fund is not None:
@@ -104,7 +105,8 @@ class SimulatorFCN(Simulator):
     def create_fundamental_price_series(self, n_steps, random_seed: int):
         rand_state = RandomState(random_seed)
         evolution = rand_state.normal(size=n_steps)
-        percentage_change = exp(evolution * self.fund_price_vol)
+        percentage_change = exp(
+            evolution * self.fund_price_vol + self.fund_price_trend - 0.5 * self.fund_price_vol ** 2)
         time_series = percentage_change.cumprod() * self.initial_fund_price
         self.fund_price_series = time_series
 

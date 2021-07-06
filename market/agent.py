@@ -1,4 +1,4 @@
-from numpy import log, exp
+from numpy import log, exp, random
 
 from market.data_model import LimitOrder, MarketOrder, CancelOrder
 from market.data_model import OrderReceipt
@@ -155,7 +155,17 @@ class AgentFCN(Agent):
         n = self.noise_sample
         r = (self.f_param * f + self.c_param * c + self.n_param * n) / (self.f_param + self.c_param + self.n_param)
         future_price = self.current_mid_price * exp(r * self.time_window)
-        if future_price > self.current_mid_price:
+
+        buy_probability = 1 / (1 + exp(-r / 0.2))
+
+        buy_outcome = random.uniform()
+
+        if buy_outcome <= buy_probability and future_price > self.current_mid_price:
             return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin) + 0.5), volume, True)
+        elif buy_outcome <= buy_probability and future_price <= self.current_mid_price:
+            return self.limit_order(Side.BUY, int(self.current_mid_price * (1 - self.order_margin) + 0.5), volume, True)
+        elif buy_outcome > buy_probability and future_price > self.current_mid_price:
+            return self.limit_order(Side.SELL, int(self.current_mid_price * (1 + self.order_margin) + 0.5), volume,
+                                    True)
         else:
             return self.limit_order(Side.SELL, int(future_price * (1 + self.order_margin) + 0.5), volume, True)
