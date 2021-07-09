@@ -36,7 +36,6 @@ with open('../data/spx_processed/features_30m.pickle', 'wb') as f_30m:
 with open('../data/spx_processed/features_1d.pickle', 'wb') as f_1d:
     pickle.dump(features_1d, f_1d)
 
-
 exchange = Exchange()
 random_simulator = RandomSimulator(exchange, 100)
 random_simulator.run(5000, 20, 500, 5, 20)

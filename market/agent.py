@@ -147,7 +147,7 @@ class AgentFCN(Agent):
     def submit_time_window(self):
         return self.time_window
 
-    def decide_order(self, volume: int):
+    def decide_order(self, volume: int, buy_outcome: float = random.uniform()):
         # TODO figure out what is T (DAY_TRADING_MINUTES)
         # TODO add tests for this function
         f = log(self.current_fundamental_price / self.current_mid_price) / DAY_TRADING_MINUTES
@@ -157,8 +157,6 @@ class AgentFCN(Agent):
         future_price = self.current_mid_price * exp(r * self.time_window)
 
         buy_probability = 1 / (1 + exp(-r / 0.2))
-
-        buy_outcome = random.uniform()
 
         if buy_outcome <= buy_probability and future_price > self.current_mid_price:
             return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin) + 0.5), volume, True)

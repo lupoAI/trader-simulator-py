@@ -140,6 +140,7 @@ class MarketVisualizerAbstract:
             self.market_prices = self.market_prices['Close']
         else:
             self.market_analyzer = SimulatedMarketAnalyzer(self.market_prices)
+            self.market_prices = np.array(self.market_prices, dtype=np.float)
 
 
 class MarketVisualizer(MarketVisualizerAbstract):
@@ -214,7 +215,8 @@ class MarketVisualizer(MarketVisualizerAbstract):
         ax4 = plt.subplot2grid((3, 6), (1, 4), colspan=2)
         ax5 = plt.subplot2grid((3, 6), (2, 0), colspan=6)
         scaled_market_prices = self.market_prices / self.market_prices[0]
-        scaled_other_market_prices = other.market_prices / other.market_prices[0]
+        first_non_nan = other.market_prices[~np.isnan(other.market_prices)][0]
+        scaled_other_market_prices = other.market_prices / first_non_nan
         ax1.plot(scaled_market_prices, color='green', label='Price 1')
         ax1_1.plot(scaled_other_market_prices, color='yellow', label='Price 2')
         ax1.grid(True)

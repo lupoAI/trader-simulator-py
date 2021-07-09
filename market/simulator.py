@@ -123,6 +123,7 @@ class SimulatorFCN(Simulator):
         agents = rand_state.randint(0, self.n_agents, size=size_matrix)
         agents_noise = rand_state.normal(0, 0.0001, size=size_matrix)
         agents_volume = rand_state.randint(1, 5, size=size_matrix)
+        agents_buy_outcome = rand_state.uniform(size=size_matrix)
         orders_to_cancel = {}
         for i in range(n_steps):
             if i % snapshot_interval == 0 and i > 0:
@@ -137,7 +138,7 @@ class SimulatorFCN(Simulator):
                     previous_price = self.last_mid_price_series[-time_window]
                 self.agents[agents[i, j]].get_data(self.fund_price_series[i], self.initial_fund_price, previous_price,
                                                    agents_noise[i, j])
-                order_receipt = self.agents[agents[i, j]].decide_order(agents_volume[i, j])
+                order_receipt = self.agents[agents[i, j]].decide_order(agents_volume[i, j], agents_buy_outcome[i, j])
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 
             self.mid_price_series.add(i, self.exchange.mid_price)
