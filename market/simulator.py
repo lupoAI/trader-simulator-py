@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from math import gamma
 
 import numpy as np
@@ -11,13 +10,22 @@ from market.data_model import Side, Series
 from market.exchange import Exchange
 
 
-@dataclass
 class Simulator:
-    exchange: Exchange
-    n_agents: int
-    market_snapshots: MarketSnapshotSeries = field(default=MarketSnapshotSeries(), init=False)
-    mid_price_series: Series = field(default=Series(), init=False)
-    last_mid_price_series: Series = field(default=Series(), init=False)
+
+    def __init__(self, exchange: Exchange, n_agents: int):
+        self.exchange = exchange
+        self.n_agents = n_agents
+        self.market_snapshots = MarketSnapshotSeries()
+        self.mid_price_series = Series()
+        self.last_mid_price_series = Series()
+
+    def __del__(self):
+        del self.exchange
+        del self.n_agents
+        del self.market_snapshots
+        del self.mid_price_series
+        del self.last_mid_price_series
+        del self
 
     def save_market_snapshot(self, time_step: int):
         market_snapshot = self.exchange.return_market_snapshot()

@@ -19,6 +19,10 @@ class MarketDataAnalyzer:
     def __init__(self, market_data):
         self.market_data = market_data
 
+    def __del__(self):
+        del self.market_data
+        del self
+
     def get_market_metrics(self, returns_interval):
         rets = self.market_data.copy().drop(columns=['Open', 'High', 'Low'])
         rets['Date'] = rets.index.date
@@ -97,6 +101,10 @@ class SimulatedMarketAnalyzer:
     def __init__(self, market_prices):
         self.market_prices = market_prices
 
+    def __del__(self):
+        del self.market_prices
+        del self
+
     def get_market_metrics(self, returns_interval):
         rets = pd.DataFrame(self.market_prices, columns=['Close'])
         rets['Rets'] = rets['Close'] / rets['Close'].shift(returns_interval) - 1
@@ -141,6 +149,12 @@ class MarketVisualizerAbstract:
         else:
             self.market_analyzer = SimulatedMarketAnalyzer(self.market_prices)
             self.market_prices = np.array(self.market_prices, dtype=np.float)
+
+    def __del__(self):
+        del self.market_prices
+        del self.market_analyzer
+        del self.is_simulated
+        del self
 
 
 class MarketVisualizer(MarketVisualizerAbstract):
