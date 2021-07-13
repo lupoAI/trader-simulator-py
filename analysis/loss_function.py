@@ -1,3 +1,7 @@
+from sklearn.linear_model import LinearRegression
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
 from analysis.market_analyzer import StylizedFacts
 from utilities.scipy_utils import wasserstein_distance
 
@@ -59,3 +63,29 @@ class LossFunction:
         simulation = self.simulated_facts.rets
         loss = wasserstein_distance(target, simulation)
         self.distribution_loss = loss
+
+
+class LossAnalyzer:
+
+    def __init__(self, file_path: str):
+        self.file_path = file_path
+        self.results_df = pd.read_csv(file_path, index_col=None)
+
+    def visualize_relationship(self, independent_variable: str, dependent_variable: str, save_name=None):
+        ind_var = self.results_df[independent_variable]
+        dep_var = self.results_df[dependent_variable]
+
+        lr = LinearRegression()
+        lr.fit(ind_var.values.reshape(-1, 1), dep_var.values)
+        min_ind = ind_var.min()
+        max_ind = ind_var.max()
+        range_pred = np.arange(min_ind, max_ind, (max_ind - min_ind) / 100)
+        y_pred = lr.predict(range_pred.reshape(-1, 1))
+        plt.scatter(ind_var, dep_var, label='scatter')
+        plt.plot(range_pred, y_pred, label='linear fit', color='red')
+        plt.xlabel(independent_variable)
+        plt.ylabel(dependent_variable)
+        plt.legend()
+        if save_name is not None:
+            plt.savefig(save_name)
+        plt.show()
