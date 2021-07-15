@@ -64,6 +64,14 @@ class LossFunction:
         loss = wasserstein_distance(target, simulation)
         self.distribution_loss = loss
 
+    def to_df(self):
+        columns = ["auto_correlation_loss", "volatility_clustering_loss",
+                   "leverage_effect_loss", "distribution_loss", "total_loss"]
+        values = [[self.auto_correlation_loss, self.volatility_clustering_loss,
+                   self.leverage_effect_loss, self.distribution_loss, self.total_loss]]
+
+        return pd.DataFrame(values, columns=columns)
+
 
 class LossAnalyzer:
 
