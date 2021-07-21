@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from math import gamma
 
 import numpy as np
@@ -11,13 +10,22 @@ from market.data_model import Side, Series
 from market.exchange import Exchange
 
 
-@dataclass
 class Simulator:
-    exchange: Exchange
-    n_agents: int
-    market_snapshots: MarketSnapshotSeries = field(default=MarketSnapshotSeries(), init=False)
-    mid_price_series: Series = field(default=Series(), init=False)
-    last_mid_price_series: Series = field(default=Series(), init=False)
+
+    def __init__(self, exchange: Exchange, n_agents: int):
+        self.exchange = exchange
+        self.n_agents = n_agents
+        self.market_snapshots = MarketSnapshotSeries()
+        self.mid_price_series = Series()
+        self.last_mid_price_series = Series()
+
+    def __del__(self):
+        del self.exchange
+        del self.n_agents
+        del self.market_snapshots
+        del self.mid_price_series
+        del self.last_mid_price_series
+        del self
 
     def save_market_snapshot(self, time_step: int):
         market_snapshot = self.exchange.return_market_snapshot()
@@ -74,9 +82,10 @@ class RandomSimulator(Simulator):
 class SimulatorFCN(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
-                 scale_fund=None, scale_chart=None, scale_noise=None, random_seed: int = 42):
+                 scale_fund=None, scale_chart=None, scale_noise=None, fund_price_trend=0, random_seed: int = 42):
         super().__init__(exchange, n_agents)
         self.fund_price_vol = fund_price_vol
+        self.fund_price_trend = fund_price_trend
         self.initial_fund_price = initial_fund_price
         rand_state = RandomState(random_seed)
         if scale_fund is not None:
@@ -104,7 +113,8 @@ class SimulatorFCN(Simulator):
     def create_fundamental_price_series(self, n_steps, random_seed: int):
         rand_state = RandomState(random_seed)
         evolution = rand_state.normal(size=n_steps)
-        percentage_change = exp(evolution * self.fund_price_vol)
+        percentage_change = exp(
+            evolution * self.fund_price_vol + self.fund_price_trend - 0.5 * self.fund_price_vol ** 2)
         time_series = percentage_change.cumprod() * self.initial_fund_price
         self.fund_price_series = time_series
 
@@ -121,6 +131,7 @@ class SimulatorFCN(Simulator):
         agents = rand_state.randint(0, self.n_agents, size=size_matrix)
         agents_noise = rand_state.normal(0, 0.0001, size=size_matrix)
         agents_volume = rand_state.randint(1, 5, size=size_matrix)
+        agents_buy_outcome = rand_state.uniform(size=size_matrix)
         orders_to_cancel = {}
         for i in range(n_steps):
             if i % snapshot_interval == 0 and i > 0:
@@ -135,7 +146,7 @@ class SimulatorFCN(Simulator):
                     previous_price = self.last_mid_price_series[-time_window]
                 self.agents[agents[i, j]].get_data(self.fund_price_series[i], self.initial_fund_price, previous_price,
                                                    agents_noise[i, j])
-                order_receipt = self.agents[agents[i, j]].decide_order(agents_volume[i, j])
+                order_receipt = self.agents[agents[i, j]].decide_order(agents_volume[i, j], agents_buy_outcome[i, j])
                 orders_to_cancel[i] += [(agents[i, j], order_receipt.order_id)]
 
             self.mid_price_series.add(i, self.exchange.mid_price)

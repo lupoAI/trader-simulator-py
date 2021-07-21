@@ -1,0 +1,4 @@
+n_agents,initial_fund_price,fund_price_vol,scale_fund,scale_chart,scale_noise,fund_price_trend,random_seed_simulator,n_steps,trades_per_step,snapshot_interval,cancel_order_interval,random_seed_run,auto_correlation_loss,volatility_clustering_loss,leverage_effect_loss,distribution_loss,total_loss,test_path
+100,5000,0.002,1,0.4,1,0,42,10000,2,5,20,42,0.010136179511912775,0.03427101479705063,0.0019792236260621652,0.20181854335023505,0.01210115084213198,../results/parameters_exploration_fcn/test_1/
+100,5000,0.002,2,0.4,1,0,42,10000,2,5,20,42,0.00743027019541945,0.03333526489059458,0.003053492748420296,0.2063339768534404,0.011470591900742183,../results/parameters_exploration_fcn/test_2/
+100,5000,0.002,6,5,9,0,42,10000,2,5,20,42,0.04094994059236843,0.025819472518828733,0.0009664379416023125,0.18472632506915257,0.01739577857587275,../results/parameters_exploration_fcn/test_4/
