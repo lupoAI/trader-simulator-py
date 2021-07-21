@@ -14,6 +14,47 @@ class StylizedFacts:
         self.rets = rets
 
 
+def compare_stylized_facts(stylized_facts: StylizedFacts, other_stylized_facts: StylizedFacts,
+                           save_name: Union[str, None] = None):
+    ax1 = plt.subplot2grid((4, 4), (0, 0), rowspan=2, colspan=2)
+    ax2 = plt.subplot2grid((4, 4), (0, 2), rowspan=2, colspan=2)
+    ax3 = plt.subplot2grid((4, 4), (2, 0), rowspan=2, colspan=2)
+    ax4 = plt.subplot2grid((4, 4), (2, 2), rowspan=2, colspan=2)
+    ax1.plot(stylized_facts.auto_correlation, color='red', label='1')
+    ax1.plot(other_stylized_facts.auto_correlation, color='blue', label='2')
+    ax1.grid(True)
+    ax1.set_xticks(list(range(1, 11)))
+    ax1.set_title('Auto-Correlation', size=10)
+    ax1.legend(fontsize=8)
+    ax2.plot(stylized_facts.volatility_clustering, color='orange', label='1')
+    ax2.plot(other_stylized_facts.volatility_clustering, color='green', label='2')
+    ax2.grid(True)
+    ax2.set_xticks(list(range(1, 11)))
+    ax2.set_title('Volatility Clustering', size=10)
+    ax2.legend(fontsize=8)
+    ax3.plot(stylized_facts.leverage_effect, color='purple', label='1')
+    ax3.plot(other_stylized_facts.leverage_effect, color='brown', label='2')
+    ax3.grid(True)
+    ax3.set_xticks(list(range(1, 11)))
+    ax3.set_title('Leverage Effect', size=10)
+    ax3.legend(fontsize=8)
+    bins = np.linspace(-50, 50, 1000)
+    centers = (bins[1:] + bins[:-1]) / 2
+    normal_distribution = normal_pdf(centers)
+    ax4.hist(stylized_facts.rets, bins=bins, density=True, label='1', alpha=0.5)
+    ax4.hist(other_stylized_facts.rets, bins=bins, density=True, label='2', alpha=0.5)
+    ax4.plot(centers, normal_distribution, label='Normal PDF')
+    ax4.set_xlim(-5, 5)
+    ax4.set_xticks(list(range(-5, 6)))
+    ax4.set_title('Return Distribution', size=10)
+    ax4.legend(fontsize=8)
+    plt.subplots_adjust(hspace=0.55, wspace=1)
+    plt.suptitle(f'Markets comparison')
+    if save_name is not None:
+        plt.savefig(save_name)
+    plt.show()
+
+
 class MarketDataAnalyzer:
 
     def __init__(self, market_data):

@@ -1,4 +1,5 @@
 from itertools import product
+from analysis.loss_function import LossAnalyzer
 import os
 
 if not os.path.exists('../results/visualize_loss_analysis/'):
