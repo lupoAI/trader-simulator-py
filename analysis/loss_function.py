@@ -6,6 +6,24 @@ from analysis.market_analyzer import StylizedFacts
 from utilities.scipy_utils import wasserstein_distance
 
 
+def aggregate_losses(loss_list):
+    aggregate_loss = {'auto_correlation_loss': 0,
+                      'volatility_clustering_loss': 0,
+                      'leverage_effect_loss': 0,
+                      'distribution_loss': 0,
+                      'total_loss': 0}
+
+    n = len(loss_list)
+    for loss in loss_list:
+        aggregate_loss['auto_correlation_loss'] += loss.auto_correlation_loss / n
+        aggregate_loss['volatility_clustering_loss'] += loss.volatility_clustering_loss / n
+        aggregate_loss['leverage_effect_loss'] += loss.leverage_effect_loss / n
+        aggregate_loss['distribution_loss'] += loss.distribution_loss / n
+        aggregate_loss['total_loss'] += loss.total_loss / n
+
+    return aggregate_loss
+
+
 class LossFunction:
 
     def __init__(self, target_facts: StylizedFacts, simulated_facts: StylizedFacts):

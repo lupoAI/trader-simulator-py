@@ -16,11 +16,24 @@ data.columns = headers
 real_market_visualizer = MarketVisualizer(data)
 
 
+def spherical_to_cartesian(rho, theta, phi):
+    x = rho * np.sin(phi) * np.cos(theta)
+    y = rho * np.sin(phi) * np.sin(theta)
+    z = rho * np.cos(phi)
+    return x, y, z
+
+
 def simulate_market(params):
     print(params)
-    scale_fund = np.exp(params[0])
-    scale_chart = np.exp(params[1])
-    scale_noise = np.exp(params[2])
+    rho = 1.5
+    theta = params[0]
+    phi = params[1]
+
+    x, y, z = spherical_to_cartesian(rho, theta, phi)
+
+    scale_fund = np.exp(x)
+    scale_chart = np.exp(y)
+    scale_noise = np.exp(z)
 
     n_agents = 100
     initial_fund_price = 5000
@@ -76,7 +89,7 @@ def simulate_market(params):
 
 
 def simulate_market_multiprocessing(params):
-    cores_number = 4
+    cores_number = 5
     p = Pool(processes=cores_number)
     log_loss_list = p.map(simulate_market, [params] * cores_number)
     log_loss_list = np.array(log_loss_list)

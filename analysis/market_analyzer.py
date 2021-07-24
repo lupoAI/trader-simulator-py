@@ -179,6 +179,40 @@ class SimulatedMarketAnalyzer:
 
         return stylized_facts
 
+    def get_daily_market_metrics(self):
+        rets = pd.DataFrame(self.market_prices, columns=['Close'])
+        rets = rets.iloc[::420]
+        rets['Rets'] = rets['Close'] / rets['Close'].shift(1) - 1
+        rets['Rets Sq'] = rets['Rets'] ** 2
+        lags = list(range(1, 11))
+        columns = ['Auto-Correlation', 'Volatility Clustering', 'Leverage Effect']
+        correlation_facts = pd.DataFrame(index=lags, columns=columns)
+
+        for lag in lags:
+            temp = rets.copy()
+            temp['Rets Shifted'] = temp['Rets'].shift(lag)
+            temp['Rets Sq Shifted'] = temp['Rets Sq'].shift(lag)
+            temp = temp.dropna()
+
+            auto_correlation = np.corrcoef(temp['Rets'], temp['Rets Shifted'])
+            volatility_clustering = np.corrcoef(temp['Rets Sq'], temp['Rets Sq Shifted'])
+            leverage_effect = np.corrcoef(temp['Rets Sq'], temp['Rets Shifted'])
+
+            correlation_facts.at[lag, 'Auto-Correlation'] = auto_correlation[0, 1]
+            correlation_facts.at[lag, 'Volatility Clustering'] = volatility_clustering[0, 1]
+            correlation_facts.at[lag, 'Leverage Effect'] = leverage_effect[0, 1]
+
+        standard_rets = rets['Rets'].dropna().values
+        standard_rets = (standard_rets - standard_rets.mean()) / standard_rets.std()
+        bins = np.linspace(-50, 50, 100)
+        histogram = np.histogram(standard_rets, bins=bins, density=True)
+        center_hist = (histogram[1][1:] + histogram[1][:-1]) / 2
+        density = pd.Series(histogram[0], index=center_hist)
+
+        stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
+
+        return stylized_facts
+
 
 class MarketVisualizerAbstract:
     def __init__(self, market_prices, is_simulated=False):
@@ -204,10 +238,8 @@ class MarketVisualizer(MarketVisualizerAbstract):
         super().__init__(market_prices, is_simulated)
 
     def visualize_market(self, returns_interval: Union[int, str], save_name: Union[str, None] = None):
-        if returns_interval == '1d' and not self.is_simulated:
+        if returns_interval == '1d':
             stylized_facts = self.market_analyzer.get_daily_market_metrics()
-        elif returns_interval == '1d' and self.is_simulated:
-            raise ValueError('1d is only available for real market data')
         else:
             stylized_facts = self.market_analyzer.get_market_metrics(returns_interval)
         ax1 = plt.subplot2grid(shape=(3, 6), loc=(0, 0), colspan=6)
@@ -250,19 +282,12 @@ class MarketVisualizer(MarketVisualizerAbstract):
 
     def compare_market(self, returns_interval: Union[int, str], other: MarketVisualizerAbstract,
                        save_name: Union[str, None] = None):
-        if returns_interval == '1d' and not self.is_simulated:
+        if returns_interval == '1d':
             stylized_facts = self.market_analyzer.get_daily_market_metrics()
-        elif returns_interval == '1d' and self.is_simulated:
-            raise ValueError('1d is only available for real market data')
+            other_stylized_facts = other.market_analyzer.get_daily_market_metrics()
         else:
             stylized_facts = self.market_analyzer.get_market_metrics(returns_interval)
-        if returns_interval == '1d' and not other.is_simulated:
-            other_stylized_facts = other.market_analyzer.get_daily_market_metrics()
-        elif returns_interval == '1d' and other.is_simulated:
-            raise ValueError('1d is only available for real market data')
-        else:
             other_stylized_facts = other.market_analyzer.get_market_metrics(returns_interval)
-
         ax1 = plt.subplot2grid(shape=(3, 6), loc=(0, 0), colspan=6)
         ax1_1 = ax1.twiny()
         ax2 = plt.subplot2grid((3, 6), (1, 0), colspan=2)
@@ -309,7 +334,7 @@ class MarketVisualizer(MarketVisualizerAbstract):
         plt.suptitle(f'Markets comparison for {returns_interval} periods returns')
         if save_name is not None:
             plt.savefig(save_name)
-        plt.show()
+        plt.show(block=False)
 
 
 def normal_pdf(values):

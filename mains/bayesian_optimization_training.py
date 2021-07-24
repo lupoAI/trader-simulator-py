@@ -3,6 +3,7 @@ if __name__ == "__main__":
     from analysis.optimizer import use_bayesian_optimization
     import os
     from glob import glob
+    import numpy as np
     import pickle
 
     if not os.path.exists("../results/bayesian_optimization_training/"):
@@ -20,15 +21,16 @@ if __name__ == "__main__":
     if not os.path.exists(test_path):
         os.mkdir(test_path)
 
-    res = use_bayesian_optimization([(-2.0, 2.0),
-                                     (-2.0, 2.0),
-                                     (-2.0, 2.0)],
+    res = use_bayesian_optimization([(-np.pi, np.pi),
+                                     (0, np.pi)],
                                     acq_func="EI",
-                                    n_calls=200,
-                                    n_random_starts=40,
+                                    n_calls=60,
+                                    n_random_starts=20,
                                     noise="gaussian",
                                     random_state=1234,
                                     save_name=test_path + "b_training_1.jpg")
 
     with open(test_path + 'test_results.pickle', 'wb') as test_results:
         pickle.dump(res, test_results)
+
+
