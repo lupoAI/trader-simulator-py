@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from market.exchange import Exchange
 from market.simulator import SimulatorFCN
 from analysis.market_analyzer import MarketVisualizer
-from analysis.loss_function import LossFunction
+from analysis.loss_function import LossFunction, aggregate_losses
 from skopt import gp_minimize
 from skopt.plots import plot_convergence
 from multiprocessing import Pool
@@ -41,13 +41,13 @@ def simulate_market(params):
     fund_price_trend = 0
     random_seed_simulation = np.random.randint(0, 1e6)  # 42
 
-    n_steps = 3000
+    n_steps = 10000
     trades_per_step = 2
     snapshot_interval = 5
     cancel_order_interval = 20
     random_seed_run = np.random.randint(0, 1e6)  # 42
 
-    rets_int = 30
+    rets_int = [1, 5, 15, 30, "1d"]
 
     simulator_parameters = {"scale_fund": scale_fund,
                             "scale_chart": scale_chart,
@@ -75,15 +75,24 @@ def simulate_market(params):
 
     global real_market_visualizer
 
-    loss = LossFunction(real_market_visualizer.market_analyzer.get_market_metrics(rets_int),
-                        simulated_market_visualizer.market_analyzer.get_market_metrics(rets_int))
-    loss.compute_loss()
+    losses = []
+    for ret in rets_int:
+        # Check that things are going well in the loop
+        # target_market_visualizer.compare_market(ret, simulated_market_visualizer,
+        #                                         save_dir + f'market_comp_iter_{i}_rets_{ret}.jpg')
 
-    # mean_correlations = (loss.auto_correlation_loss + loss.volatility_clustering_loss + loss.leverage_effect_loss) / 3
-    #
-    # log_loss = np.log(mean_correlations)
+        if ret == '1d':
+            loss = LossFunction(real_market_visualizer.market_analyzer.get_daily_market_metrics(),
+                                simulated_market_visualizer.market_analyzer.get_daily_market_metrics())
+        else:
+            loss = LossFunction(real_market_visualizer.market_analyzer.get_market_metrics(ret),
+                                simulated_market_visualizer.market_analyzer.get_market_metrics(ret))
+        loss.compute_loss()
+        losses += [loss]
 
-    log_loss = np.log(loss.total_loss)
+    total_loss = aggregate_losses(losses)
+
+    log_loss = np.log(total_loss.total_loss)
 
     return log_loss
 

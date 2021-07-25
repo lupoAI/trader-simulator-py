@@ -72,8 +72,8 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
         for ret in rets_int:
             # Check that things are going well in the loop
             if save_dir is not None:
-                real_market_visualizer.compare_market(ret, simulated_market_visualizer,
-                                                      save_dir + f'market_comp_iter_{i}_rets_{ret}.jpg')
+                target_market_visualizer.compare_market(ret, simulated_market_visualizer,
+                                                        save_dir + f'market_comp_iter_{i}_rets_{ret}.jpg')
 
             if ret == '1d':
                 loss = LossFunction(target_market_visualizer.market_analyzer.get_daily_market_metrics(),
