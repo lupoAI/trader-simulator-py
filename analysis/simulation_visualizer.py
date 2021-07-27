@@ -37,7 +37,7 @@ class VisualizeSimulation:
             plt.legend()
         if save_name is not None:
             plt.savefig(save_name)
-        plt.show(block=False)
+        plt.show()
 
     def add_mid_price(self):
         plt.plot(self.mid_price.time_step, self.mid_price.price, color='green', label='mid price')

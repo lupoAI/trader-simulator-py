@@ -334,7 +334,7 @@ class MarketVisualizer(MarketVisualizerAbstract):
         plt.suptitle(f'Markets comparison for {returns_interval} periods returns')
         if save_name is not None:
             plt.savefig(save_name)
-        plt.show(block=False)
+        plt.show()
 
 
 def normal_pdf(values):
