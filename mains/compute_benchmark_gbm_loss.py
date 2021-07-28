@@ -6,7 +6,7 @@ import pandas as pd
 from tqdm import tqdm
 import os
 
-list_rets = [1, 5, 15, 30, 7 * 60]
+list_rets = [1, 5, 15, 30, 390]
 
 if not os.path.exists("../results/compute_benchmark_gbm_loss/"):
     os.mkdir("../results/compute_benchmark_gbm_loss/")
@@ -17,15 +17,15 @@ data = data.drop(columns=[5])
 data.columns = headers
 real_market_analyzer = MarketDataAnalyzer(data)
 
-n_series = 2
+n_series = 300
 n_steps = 10000
 T = 10000
 vol = 0.2
 trend = - 0.5 * vol ** 2
 random_seed = 100
 starting_price = 10000
-save = False
-show_samples = True
+save = True
+show_samples = False
 
 random_state = RandomState(random_seed)
 gauss = random_state.normal(size=(n_steps, n_series))
@@ -44,7 +44,7 @@ for lag in tqdm(list_rets):
 for lag in tqdm(list_rets):
     losses = pd.DataFrame()
     facts = stylized_facts[lag]
-    if lag == 7 * 60:
+    if lag == 390:
         target_facts = real_market_analyzer.get_daily_market_metrics()
     else:
         target_facts = real_market_analyzer.get_market_metrics(lag)
@@ -58,9 +58,18 @@ for lag in tqdm(list_rets):
     if save:
         losses.to_csv(f"../results/compute_benchmark_gbm_loss/benchmark_loss_{lag}_rets.csv", index=False)
 
-
 columns = ["auto_correlation_loss", "volatility_clustering_loss", "leverage_effect_loss", "distribution_loss",
            "total_loss"]
+
+real_close_correlation = real_market_analyzer.get_close_auto_correlation()
+
+close_correlation_loss = pd.Series(name='close_correlation_loss', dtype=np.float)
+for i, time_s in enumerate(time_series):
+    simulated_close_correlation = time_s.get_close_auto_correlation()
+    close_correlation_loss.loc[i] = ((real_close_correlation - simulated_close_correlation) ** 2).mean()
+
+close_correlation_loss.to_csv("../results/compute_benchmark_gbm_loss/benchmark_close_correlation_loss.csv", index=False)
+
 
 mean_loss = pd.DataFrame(index=list_rets, columns=columns)
 std_loss = pd.DataFrame(index=list_rets, columns=columns)

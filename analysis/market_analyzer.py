@@ -1,7 +1,10 @@
+import datetime
+import pickle
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Union
+import os
 
 
 class StylizedFacts:
@@ -65,6 +68,12 @@ class MarketDataAnalyzer:
         del self
 
     def get_market_metrics(self, returns_interval):
+
+        if os.path.exists(f"../data/spx_processed/features_{returns_interval}m.pickle"):
+            with open(f"../data/spx_processed/features_{returns_interval}m.pickle", 'rb') as features:
+                stylized_facts = pickle.load(features)
+            return stylized_facts
+
         rets = self.market_data.copy().drop(columns=['Open', 'High', 'Low'])
         rets['Date'] = rets.index.date
         rets['Date Shifted'] = rets['Date'].shift(returns_interval)
@@ -105,6 +114,11 @@ class MarketDataAnalyzer:
         return stylized_facts
 
     def get_daily_market_metrics(self):
+        if os.path.exists("../data/spx_processed/features_1d.pickle"):
+            with open("../data/spx_processed/features_1d.pickle", 'rb') as features:
+                stylized_facts = pickle.load(features)
+            return stylized_facts
+
         close = self.market_data[['Close']].groupby(self.market_data.index.date).last()
         close['Rets'] = close / close.shift(1) - 1
         close['Rets Sq'] = close['Rets'] ** 2
@@ -135,6 +149,50 @@ class MarketDataAnalyzer:
         stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
 
         return stylized_facts
+
+    def get_close_auto_correlation(self):
+
+        if os.path.exists("../data/spx_processed/features_close.pickle"):
+            with open("../data/spx_processed/features_close.pickle", 'rb') as features:
+                corr = pickle.load(features)
+            return corr
+
+        close = self.market_data[['Close']].copy()
+        close.loc[:, 'Time'] = close.index.time
+        close.loc[:, 'Date'] = close.index.date
+        start_time = 9 * 60 + 30
+        length_of_trading_day = 390
+        today = datetime.datetime(1900, 1, 1)
+        unique_times = [today + datetime.timedelta(minutes=start_time + m) for m in range(length_of_trading_day + 1)]
+        unique_times = np.array([x.time() for x in unique_times])
+        n_times = len(unique_times) - 1
+        idx = [0, int(n_times / 2), int(6 * n_times / 10), int(7 * n_times / 10), int(8 * n_times / 10),
+               int(9 * n_times / 10), n_times]
+        times = unique_times[idx]
+        start_time = times[0]
+        end_time = times[-1]
+        correlations = []
+        for mid_time in times[1:-1]:
+            kwargs = {'start': start_time, 'end': end_time, 'mid': mid_time}
+            rets = close.groupby('Date').apply(get_corr_returns, **kwargs).dropna()
+            get_first = np.vectorize(lambda x: x[0])
+            get_second = np.vectorize(lambda x: x[1])
+            first = get_first(rets.values)
+            second = get_second(rets.values)
+            correlations += [np.corrcoef(first, second)[0, 1]]
+
+        return np.array(correlations)
+
+
+def get_corr_returns(arr, start, end, mid):
+    price_st = arr['Close'].loc[arr['Time'] == start]
+    price_en = arr['Close'].loc[arr['Time'] == end]
+    price_md = arr['Close'].loc[arr['Time'] == mid]
+
+    if len(price_st) == 0 or len(price_en) == 0 or len(price_md) == 0:
+        return np.nan
+
+    return [price_md[0] / price_st[0] - 1, price_en[0] / price_md[0] - 1]
 
 
 class SimulatedMarketAnalyzer:
@@ -181,7 +239,7 @@ class SimulatedMarketAnalyzer:
 
     def get_daily_market_metrics(self):
         rets = pd.DataFrame(self.market_prices, columns=['Close'])
-        rets = rets.iloc[::420]
+        rets = rets.iloc[::390]
         rets['Rets'] = rets['Close'] / rets['Close'].shift(1) - 1
         rets['Rets Sq'] = rets['Rets'] ** 2
         lags = list(range(1, 11))
@@ -212,6 +270,30 @@ class SimulatedMarketAnalyzer:
         stylized_facts = StylizedFacts(correlation_facts, density, standard_rets)
 
         return stylized_facts
+
+    def get_close_auto_correlation(self):
+        close = pd.DataFrame(self.market_prices, columns=['Close'])
+        n_times = 390
+        idx = [0, int(n_times / 2), int(6 * n_times / 10), int(7 * n_times / 10), int(8 * n_times / 10),
+               int(9 * n_times / 10), n_times - 1]
+        start = close['Close'].iloc[idx[0]::n_times]
+        end = close['Close'].iloc[idx[-1]::n_times]
+        correlations = []
+        for i in idx[1:-1]:
+            mid = close['Close'].iloc[i::n_times]
+            len_seg_1 = min(len(start), len(mid))
+            len_seg_2 = min(len(mid), len(end))
+            first = mid.iloc[:len_seg_1].values / start.iloc[:len_seg_1].values - 1
+            second = end.iloc[:len_seg_2].values / mid.iloc[:len_seg_2].values - 1
+            len_fin = min(len(first), len(second))
+            first = first[:len_fin]
+            second = second[:len_fin]
+            mask = ~np.isnan(first) & ~np.isnan(second)
+            first = first[mask]
+            second = second[mask]
+            correlations += [np.corrcoef(first, second)[0, 1]]
+
+        return np.array(correlations)
 
 
 class MarketVisualizerAbstract:

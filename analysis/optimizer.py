@@ -90,6 +90,7 @@ def simulate_market(params):
         loss.compute_loss()
         losses += [loss]
 
+    # TODO complete loss in bayesian optimization training and other places
     total_loss = aggregate_losses(losses)
 
     log_loss = np.log(total_loss.total_loss)

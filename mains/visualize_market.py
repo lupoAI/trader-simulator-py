@@ -25,6 +25,8 @@ features_30m = real_market_visualizer.market_analyzer.get_market_metrics(30)
 real_market_visualizer.visualize_market('1d', '../results/visualize_market/spx_1d_rets_market.jpg')
 features_1d = real_market_visualizer.market_analyzer.get_daily_market_metrics()
 
+features_close = real_market_visualizer.market_analyzer.get_close_auto_correlation()
+
 with open('../data/spx_processed/features_1m.pickle', 'wb') as f_1m:
     pickle.dump(features_1m, f_1m)
 with open('../data/spx_processed/features_5m.pickle', 'wb') as f_5m:
@@ -35,6 +37,9 @@ with open('../data/spx_processed/features_30m.pickle', 'wb') as f_30m:
     pickle.dump(features_30m, f_30m)
 with open('../data/spx_processed/features_1d.pickle', 'wb') as f_1d:
     pickle.dump(features_1d, f_1d)
+
+with open('../data/spx_processed/features_close.pickle', 'wb') as f_close:
+    pickle.dump(features_close, f_close)
 
 exchange = Exchange()
 random_simulator = RandomSimulator(exchange, 100)

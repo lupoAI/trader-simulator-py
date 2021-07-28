@@ -13,7 +13,7 @@ if __name__ == "__main__":
     simulator_fcn.run(1000, 10, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()
-    visualizer.plot_save_and_show("../results/fcn_lbo_heatmap.jpg")
+    visualizer.plot_save_and_show("../results/visualize_fcn/fcn_lbo_heatmap.jpg")
     visualizer.compute_agents_info()
     visualizer.plot_agents_attributes_vs_parameters('value_portfolio')
     visualizer.plot_save_and_show("../results/visualize_fcn/value_portfolio_vs_parameters.jpg", False)
