@@ -1,4 +1,3 @@
-import numpy as np
 from numpy import exp, array
 from numpy.random import RandomState
 
@@ -8,7 +7,7 @@ from market.exchange import Exchange
 from market.simulator import Simulator
 
 
-class SimulatorFCN(Simulator):
+class SimulatorFCNExp(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
                  scale_fund=None, scale_chart=None, scale_noise=None, fund_price_trend=0, random_seed: int = 42):
@@ -66,7 +65,6 @@ class SimulatorFCN(Simulator):
         minute_of_trade = time_of_trade.astype(int)
         minute_of_trade = minute_of_trade[minute_of_trade < n_steps]
         n_trades = len(minute_of_trade)
-        unique_minute_of_trade = np.unique(minute_of_trade)
 
         agents = rand_state.randint(0, self.n_agents, size=n_trades)
         agents_noise = rand_state.normal(0, 0.0001, size=n_trades)

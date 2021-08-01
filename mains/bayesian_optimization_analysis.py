@@ -1,10 +1,12 @@
 import pickle
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from analysis.optimizer import spherical_to_cartesian
 from analysis.loss_function import aggregate_losses
 from market.exchange import Exchange
-from market.simulator import SimulatorFCN
+from market.simulator import SimulatorFCNExp
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import LossFunction
 from analysis.simulation_visualizer import VisualizeSimulationFCN
@@ -23,15 +25,15 @@ def log_to_linear(x, y, z):
 
 def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noise, target_market_visualizer,
                                      save_dir=None):
-    n_agents = 100
+    n_agents = 1000
     initial_fund_price = 5000
     fund_price_vol = 0.002
     fund_price_trend = 0
 
-    n_steps = 8000
-    trades_per_step = 2
-    snapshot_interval = 5
-    cancel_order_interval = 20
+    n_steps = 16000
+    trades_per_step = 4
+    snapshot_interval = 30
+    cancel_order_interval = 40
 
     rets_int = [1, 5, 15, 30, "1d"]
 
@@ -44,21 +46,23 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
                             "fund_price_trend": fund_price_trend}
 
     run_parameters = {"n_steps": n_steps,
-                      "trades_per_step": trades_per_step,
+                      "average_trades_per_step": trades_per_step,
                       "snapshot_interval": snapshot_interval,
                       "cancel_order_interval": cancel_order_interval}
 
     total_loss = {}
     for i in range(n_iters):
 
-        random_seed_simulation = np.random.randint(0, 1e6)  # 42
-        random_seed_run = np.random.randint(0, 1e6)  # 42
+        random_seed_simulation = 105  # np.random.randint(0, 1e6)  # 42
+        random_seed_run = 300  # np.random.randint(0, 1e6)  # 42
+        print(f"Random seed for simulation is {random_seed_simulation}")
+        print(f"Random seed for run is {random_seed_run}")
 
         simulator_parameters['random_seed'] = random_seed_simulation
         run_parameters['random_seed'] = random_seed_run
 
         exchange = Exchange()
-        simulator_fcn = SimulatorFCN(exchange, **simulator_parameters)
+        simulator_fcn = SimulatorFCNExp(exchange, **simulator_parameters)
         simulator_fcn.run(**run_parameters)
 
         visualizer = VisualizeSimulationFCN(simulator_fcn)
@@ -70,11 +74,9 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
 
         losses = []
         for ret in rets_int:
-            # Check that things are going well in the loop
             if save_dir is not None:
                 target_market_visualizer.compare_market(ret, simulated_market_visualizer,
                                                         save_dir + f'market_comp_iter_{i}_rets_{ret}.jpg')
-
             if ret == '1d':
                 loss = LossFunction(target_market_visualizer.market_analyzer.get_daily_market_metrics(),
                                     simulated_market_visualizer.market_analyzer.get_daily_market_metrics())
@@ -84,7 +86,22 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
             loss.compute_loss()
             losses += [loss]
 
-        total_loss[i] = aggregate_losses(losses)
+        target_close_correlation = target_market_visualizer.market_analyzer.get_close_auto_correlation()
+        simulated_close_correlation = simulated_market_visualizer.market_analyzer.get_close_auto_correlation()
+        correlation_loss = mean_square_error(target_close_correlation, simulated_close_correlation)
+
+        plt.plot(target_close_correlation, label='target correlation')
+        plt.plot(simulated_close_correlation, label='simulated correlation')
+        plt.legend()
+        plt.title('Close Correlation Loss')
+        plt.xlabel('Correlation')
+        if save_dir is not None:
+            plt.savefig(save_dir + f'correlation_loss_iter_{i}.jpg')
+        plt.show()
+
+        total_loss[i] = aggregate_losses(losses)['total_loss'] * 0.5 + correlation_loss * 0.5
+
+    # TODO add visualization of close correlation loss
 
     print('total_loss:')
     print(total_loss)
@@ -95,13 +112,17 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
     return total_loss
 
 
+def mean_square_error(target, simulated):
+    return ((target - simulated)**2).mean()
+
+
 if __name__ == "__main__":
     import os
 
-    test_number = 3
+    test_number = 10
     test_path = f"../results/bayesian_optimization_training/test_{test_number}/"
     test_path_analysis = f"../results/bayesian_optimization_analysis/test_{test_number}/"
-    n_sims = 4
+    n_sims = 2
 
     if not os.path.exists("../results/bayesian_optimization_analysis"):
         os.mkdir("../results/bayesian_optimization_analysis")

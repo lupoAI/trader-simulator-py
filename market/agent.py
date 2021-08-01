@@ -18,15 +18,8 @@ class Agent:
         self.cash = 0
         self.stock = 0
         self.value_portfolio = 0
-        # # TODO add info tracking for agents
 
     def market_order(self, side: Side, volume: int, return_receipt: bool = False):
-        # self.best_bid_price = None
-        # self.best_ask_price = None
-        # self.best_bid_volume = None
-        # self.best_ask_volume = None
-        # self.total_bid_volume = 0
-        # self.total_ask_volume = 0
         mo = MarketOrder(volume, side)
         order_receipt = self.exchange.handle_order(self.id, mo)
         if order_receipt.outcome:
@@ -156,14 +149,65 @@ class AgentFCN(Agent):
         r = (self.f_param * f + self.c_param * c + self.n_param * n) / (self.f_param + self.c_param + self.n_param)
         future_price = self.current_mid_price * exp(r * self.time_window)
 
-        buy_probability = 1 / (1 + exp(-r / 0.2))
+        buy_probability = 1 / (1 + exp(-r / 0.002))
+        limit_mult = 1
 
         if buy_outcome <= buy_probability and future_price > self.current_mid_price:
-            return self.limit_order(Side.BUY, int(future_price * (1 - self.order_margin) + 0.5), volume, True)
+            price_to_buy = int(future_price * (1 - self.order_margin) + 0.5)
+            volume_to_buy = volume if price_to_buy >= self.current_mid_price else int(volume * limit_mult)
+            return self.limit_order(Side.BUY, price_to_buy, volume_to_buy, True)
         elif buy_outcome <= buy_probability and future_price <= self.current_mid_price:
-            return self.limit_order(Side.BUY, int(self.current_mid_price * (1 - self.order_margin) + 0.5), volume, True)
+            price_to_buy = int(self.current_mid_price * (1 - self.order_margin) + 0.5)
+            volume_to_buy = volume if price_to_buy >= self.current_mid_price else int(volume * limit_mult)
+            return self.limit_order(Side.BUY, price_to_buy, volume_to_buy, True)
         elif buy_outcome > buy_probability and future_price > self.current_mid_price:
-            return self.limit_order(Side.SELL, int(self.current_mid_price * (1 + self.order_margin) + 0.5), volume,
-                                    True)
+            price_to_sell = int(self.current_mid_price * (1 + self.order_margin) + 0.5)
+            volume_to_sell = volume if price_to_sell <= self.current_mid_price else int(volume * limit_mult)
+            return self.limit_order(Side.SELL, price_to_sell, volume_to_sell, True)
         else:
-            return self.limit_order(Side.SELL, int(future_price * (1 + self.order_margin) + 0.5), volume, True)
+            price_to_sell = int(future_price * (1 + self.order_margin) + 0.5)
+            volume_to_sell = volume if price_to_sell <= self.current_mid_price else int(volume * limit_mult)
+            return self.limit_order(Side.SELL, price_to_sell, volume_to_sell, True)
+
+
+class AgentGamma(Agent):
+
+    def __init__(self, exchange: Exchange, leverage):
+        super().__init__(exchange)
+        self.starting_price = None
+        self.current_mid_price = None
+        self.current_best_ask = None
+        self.current_best_bid = None
+        self.previous_mid_price = None
+        self.leverage = leverage
+
+    def submit_attributes(self):
+        self.compute_value_of_portfolio()
+        return {'cash': self.cash,
+                'stock': self.stock,
+                'value_portfolio': self.value_portfolio}
+
+    def get_data(self, starting_price: int, previous_mid_price: float):
+        self.starting_price = starting_price
+        self.current_mid_price = self.exchange.last_valid_mid_price
+        if self.current_mid_price is None:
+            self.current_mid_price = self.starting_price
+        self.current_best_bid = self.exchange.best_bid_price
+        if self.current_mid_price is None:
+            self.current_mid_price = self.starting_price
+        self.current_best_ask = self.exchange.best_ask_price
+        if self.current_best_ask is None:
+            self.current_best_ask = self.starting_price
+        self.previous_mid_price = previous_mid_price
+        if self.previous_mid_price is None:
+            self.previous_mid_price = self.starting_price
+
+    def decide_order(self):
+        daily_return = self.current_mid_price / self.previous_mid_price - 1
+        volume_traded = int(daily_return * 100 * self.leverage + 0.5)
+        if volume_traded == 0:
+            return self.market_order(Side.BUY, 0, True)
+        elif volume_traded > 0:
+            return self.market_order(Side.BUY, volume_traded, True)
+        else:
+            return self.market_order(Side.SELL, -volume_traded, True)

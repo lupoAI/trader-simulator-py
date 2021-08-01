@@ -4,10 +4,12 @@ import numpy as np
 from numpy import exp, array, log, power, cumsum
 from numpy.random import RandomState
 
-from market.agent import Agent, AgentFCN
+from market.agent import Agent, AgentFCN, AgentGamma
 from market.data_model import MarketSnapshotSeries, MarketSnapshot
 from market.data_model import Side, Series
 from market.exchange import Exchange
+
+MINUTES_IN_DAY = 390
 
 
 class Simulator:
@@ -235,3 +237,250 @@ class SimulatorPaper1(Simulator):
             else:
                 raise ValueError("Wrong action type")
         self.market_snapshots.format_price_to_volume()
+
+
+class SimulatorFCNExp(Simulator):
+
+    def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
+                 scale_fund=None, scale_chart=None, scale_noise=None, fund_price_trend=0, random_seed: int = 42):
+        super().__init__(exchange, n_agents)
+        self.fund_price_vol = fund_price_vol
+        self.fund_price_trend = fund_price_trend
+        self.initial_fund_price = initial_fund_price
+        rand_state = RandomState(random_seed)
+        if scale_fund is not None:
+            self.scale_fund = scale_fund
+        else:
+            self.scale_fund = rand_state.normal(0.3, 0.03)
+        if scale_chart is not None:
+            self.scale_chart = scale_chart
+        else:
+            self.scale_chart = rand_state.normal(0.3, 0.03)
+        if scale_noise is not None:
+            self.scale_noise = scale_noise
+        else:
+            self.scale_noise = rand_state.normal(0.3, 0.03)
+        self.agents_fcn = rand_state.exponential(size=(n_agents, 3))
+        self.agents_fcn *= array([[self.scale_fund, self.scale_chart, self.scale_noise]])
+        self.agents_time_window = rand_state.randint(15, 700, size=(n_agents,))
+        self.agents_order_margin = rand_state.uniform(0, 0.01, size=(n_agents,))
+        self.agents = [AgentFCN(self.exchange,
+                                *self.agents_fcn[i],
+                                self.agents_time_window[i],
+                                self.agents_order_margin[i]) for i in range(self.n_agents)]
+        self.fund_price_series = array([])
+
+    def create_fundamental_price_series(self, n_steps, random_seed: int):
+        rand_state = RandomState(random_seed)
+        evolution = rand_state.normal(size=n_steps)
+        percentage_change = exp(
+            evolution * self.fund_price_vol + self.fund_price_trend - 0.5 * self.fund_price_vol ** 2)
+        time_series = percentage_change.cumprod() * self.initial_fund_price
+        self.fund_price_series = time_series
+
+    def clear_cache(self):
+        super().clear_cache()
+        self.fund_price_series = array([])
+
+    def run(self, n_steps: int, average_trades_per_step: int, snapshot_interval: int,
+            cancel_order_interval: int, random_seed: int = 42):
+        self.clear_cache()
+
+        rand_state = RandomState(random_seed)
+
+        self.create_fundamental_price_series(n_steps, rand_state.randint(1000))
+
+        n_draws = n_steps * average_trades_per_step * 2
+
+        waiting_times = rand_state.exponential(1 / average_trades_per_step, size=n_draws)
+        time_of_trade = waiting_times.cumsum()
+        minute_of_trade = time_of_trade.astype(int)
+        minute_of_trade = minute_of_trade[minute_of_trade < n_steps]
+        n_trades = len(minute_of_trade)
+
+        agents = rand_state.randint(0, self.n_agents, size=n_trades)
+        agents_noise = rand_state.normal(0, 0.0001, size=n_trades)
+        agents_volume = rand_state.randint(1, 5, size=n_trades)
+        agents_buy_outcome = rand_state.uniform(size=n_trades)
+        orders_to_cancel = []
+        current_minute = 0
+        changed_period = True
+
+        for i in range(n_trades):
+
+            if current_minute != minute_of_trade[i]:
+                changed_period = True
+                current_minute = minute_of_trade[i]
+
+            if current_minute % snapshot_interval == 0 and current_minute > 0 and changed_period:
+                self.save_market_snapshot(current_minute)
+
+            if changed_period:
+                orders_to_cancel += [[]]
+
+            time_window = self.agents[agents[i]].submit_time_window()
+            if time_window > current_minute - 1:
+                previous_price = None
+            else:
+                if len(self.last_mid_price_series) >= time_window:
+                    previous_price = self.last_mid_price_series[-time_window]
+                else:
+                    previous_price = self.last_mid_price_series[0]
+
+            self.agents[agents[i]].get_data(self.fund_price_series[current_minute], self.initial_fund_price,
+                                            previous_price, agents_noise[i])
+            order_receipt = self.agents[agents[i]].decide_order(agents_volume[i], agents_buy_outcome[i])
+            orders_to_cancel[-1] += [(agents[i], order_receipt.order_id)]
+
+            if changed_period:
+                self.mid_price_series.add(current_minute, self.exchange.mid_price)
+                self.last_mid_price_series.add(current_minute, self.exchange.last_valid_mid_price)
+
+            if current_minute >= cancel_order_interval and changed_period:
+                for agent_id, order_id in orders_to_cancel[0]:
+                    self.agents[agent_id].cancel_order(order_id)
+                del orders_to_cancel[0]
+
+            changed_period = False
+
+        self.market_snapshots.format_price_to_volume()
+
+
+class SimulatorFCNGamma(Simulator):
+
+    def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
+                 scale_fund=None, scale_chart=None, scale_noise=None, gamma_traders_percentage=0, fund_price_trend=0,
+                 random_seed: int = 42):
+        super().__init__(exchange, n_agents)
+        self.fund_price_vol = fund_price_vol
+        self.fund_price_trend = fund_price_trend
+        self.initial_fund_price = initial_fund_price
+        rand_state = RandomState(random_seed)
+        if scale_fund is not None:
+            self.scale_fund = scale_fund
+        else:
+            self.scale_fund = rand_state.normal(0.3, 0.03)
+        if scale_chart is not None:
+            self.scale_chart = scale_chart
+        else:
+            self.scale_chart = rand_state.normal(0.3, 0.03)
+        if scale_noise is not None:
+            self.scale_noise = scale_noise
+        else:
+            self.scale_noise = rand_state.normal(0.3, 0.03)
+        self.n_gamma_agents = int(gamma_traders_percentage * n_agents)
+        self.n_fcn_agents = n_agents - self.n_gamma_agents
+        self.agents_fcn = rand_state.exponential(size=(self.n_fcn_agents, 3))
+        self.agents_fcn *= array([[self.scale_fund, self.scale_chart, self.scale_noise]])
+        self.agents_time_window = rand_state.randint(500, 1001, size=(self.n_fcn_agents,))  # Modify
+        self.agents_order_margin = rand_state.uniform(0, 0.05, size=(self.n_fcn_agents,))  # Modify
+        self.agents_fcn = [AgentFCN(self.exchange,
+                                    *self.agents_fcn[i],
+                                    self.agents_time_window[i],
+                                    self.agents_order_margin[i]) for i in range(self.n_fcn_agents)]
+        self.agents_gamma = [AgentGamma(self.exchange) for _ in range(self.n_gamma_agents)]
+        self.fund_price_series = array([])
+
+    def create_fundamental_price_series(self, n_steps, random_seed: int):
+        rand_state = RandomState(random_seed)
+        evolution = rand_state.normal(size=n_steps)
+        percentage_change = exp(
+            evolution * self.fund_price_vol + self.fund_price_trend - 0.5 * self.fund_price_vol ** 2)
+        time_series = percentage_change.cumprod() * self.initial_fund_price
+        self.fund_price_series = time_series
+
+    def clear_cache(self):
+        super().clear_cache()
+        self.fund_price_series = array([])
+
+    def run(self, n_steps: int, average_trades_per_step: int, snapshot_interval: int,
+            cancel_order_interval: int, random_seed: int = 42):
+        self.clear_cache()
+
+        rand_state = RandomState(random_seed)
+
+        self.create_fundamental_price_series(n_steps, rand_state.randint(1000))
+
+        n_draws = n_steps * average_trades_per_step * 2
+
+        waiting_times = rand_state.exponential(1 / average_trades_per_step, size=n_draws)
+        time_of_trade = waiting_times.cumsum()
+        minute_of_trade = time_of_trade.astype(int)
+        minute_of_trade = minute_of_trade[minute_of_trade < n_steps]
+        n_trades = len(minute_of_trade)
+        unique_minutes, count = np.unique(minute_of_trade, return_counts=True)
+        max_trade_per_min = np.max(count)
+
+        pr_fcn_agent = self.get_choice_between_fcn_and_gamma_traders(n_steps)
+        choice_agent = rand_state.uniform(size=(n_steps, max_trade_per_min))
+        choice_agent = (choice_agent < pr_fcn_agent).astype(int)
+
+        fcn_agents = rand_state.randint(0, self.n_fcn_agents, size=n_trades)
+        gamma_agents = rand_state.randint(0, self.n_gamma_agents, size=n_trades)
+        agents_noise = rand_state.normal(0, 0.0001, size=n_trades)
+        agents_volume = rand_state.randint(1, 5, size=n_trades)
+        agents_buy_outcome = rand_state.uniform(size=n_trades)
+        orders_to_cancel = []
+        current_minute = 0
+        changed_period = True
+        minute_trade_counter = 0
+        minutes_since_open = 0
+
+        for i in range(n_trades):
+
+            if current_minute != minute_of_trade[i]:
+                changed_period = True
+                current_minute = minute_of_trade[i]
+                minutes_since_open = current_minute % MINUTES_IN_DAY
+                minute_trade_counter = 0
+
+            if current_minute % snapshot_interval == 0 and current_minute > 0 and changed_period:
+                self.save_market_snapshot(current_minute)
+
+            if changed_period:
+                orders_to_cancel += [[]]
+
+            if choice_agent[current_minute, minute_trade_counter] == 0:
+                time_window = self.agents_fcn[fcn_agents[i]].submit_time_window()
+                if time_window > current_minute - 1:
+                    previous_price = None
+                else:
+                    if len(self.last_mid_price_series) >= time_window:
+                        previous_price = self.last_mid_price_series[-time_window]
+                    else:
+                        previous_price = self.last_mid_price_series[0]
+
+                self.agents_fcn[fcn_agents[i]].get_data(self.fund_price_series[current_minute], self.initial_fund_price,
+                                                        previous_price, agents_noise[i])
+                order_receipt = self.agents_fcn[fcn_agents[i]].decide_order(agents_volume[i], agents_buy_outcome[i])
+                orders_to_cancel[-1] += [(fcn_agents[i], order_receipt.order_id)]
+            else:
+                previous_price = self.last_mid_price_series[-minutes_since_open]
+                self.agents_gamma[gamma_agents[i]].get_data(self.initial_fund_price, previous_price)
+                order_receipt = self.agents_gamma[gamma_agents[i]].decide_order()  # Currently undefined
+                orders_to_cancel[-1] += [(fcn_agents[i], order_receipt.order_id)]
+
+            if changed_period:
+                self.mid_price_series.add(current_minute, self.exchange.mid_price)
+                self.last_mid_price_series.add(current_minute, self.exchange.last_valid_mid_price)
+
+            if current_minute >= cancel_order_interval and changed_period:
+                for agent_id, order_id in orders_to_cancel[0]:
+                    self.agents_fcn[agent_id].cancel_order(order_id)
+                del orders_to_cancel[0]
+
+            changed_period = False
+            minute_trade_counter += 1
+
+        self.market_snapshots.format_price_to_volume()
+
+    @staticmethod
+    def get_choice_between_fcn_and_gamma_traders(len_simulation):
+        minutes_since_open = list(range(MINUTES_IN_DAY)) * (len_simulation // MINUTES_IN_DAY) \
+                             + list(range(len_simulation % MINUTES_IN_DAY))
+        assert len(minutes_since_open) == len_simulation
+        minutes_since_open = np.array(minutes_since_open)
+        weight_for_fcn = np.array([1] * len_simulation)
+        tr = 50
+        weight_for_gamma = np.exp(-(MINUTES_IN_DAY - tr - minutes_since_open) / tr)
+        return weight_for_fcn / (weight_for_fcn + weight_for_gamma)

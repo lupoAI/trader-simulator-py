@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from market.exchange import Exchange
-from market.simulator import SimulatorFCN
+from market.simulator import SimulatorFCNExp
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import LossFunction, aggregate_losses
 from skopt import gp_minimize
@@ -35,7 +35,7 @@ def simulate_market(params):
     scale_chart = np.exp(y)
     scale_noise = np.exp(z)
 
-    n_agents = 100
+    n_agents = 1000
     initial_fund_price = 5000
     fund_price_vol = 0.002
     fund_price_trend = 0
@@ -59,13 +59,13 @@ def simulate_market(params):
                             "random_seed": random_seed_simulation}
 
     run_parameters = {"n_steps": n_steps,
-                      "trades_per_step": trades_per_step,
+                      "average_trades_per_step": trades_per_step,
                       "snapshot_interval": snapshot_interval,
                       "cancel_order_interval": cancel_order_interval,
                       "random_seed": random_seed_run}
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCN(exchange, **simulator_parameters)
+    simulator_fcn = SimulatorFCNExp(exchange, **simulator_parameters)
     simulator_fcn.run(**run_parameters)
     simulation_price = simulator_fcn.last_mid_price_series
     simulated_market_visualizer = MarketVisualizer(simulation_price.price, is_simulated=True)
@@ -90,12 +90,20 @@ def simulate_market(params):
         loss.compute_loss()
         losses += [loss]
 
-    # TODO complete loss in bayesian optimization training and other places
+    correlation_loss = mean_square_error(real_market_visualizer.market_analyzer.get_close_auto_correlation(),
+                                         simulated_market_visualizer.market_analyzer.get_close_auto_correlation())
+
     total_loss = aggregate_losses(losses)
 
-    log_loss = np.log(total_loss.total_loss)
+    final_loss = correlation_loss * 0.5 + total_loss["total_loss"] * 0.5
+
+    log_loss = np.log(final_loss)
 
     return log_loss
+
+
+def mean_square_error(target, simulated):
+    return ((target - simulated)**2).mean()
 
 
 def simulate_market_multiprocessing(params):

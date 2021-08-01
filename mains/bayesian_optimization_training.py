@@ -24,13 +24,11 @@ if __name__ == "__main__":
     res = use_bayesian_optimization([(-np.pi, np.pi),
                                      (0, np.pi)],
                                     acq_func="EI",
-                                    n_calls=60,
-                                    n_random_starts=20,
+                                    n_calls=100,
+                                    n_random_starts=60,
                                     noise="gaussian",
-                                    random_state=1234,
+                                    random_state=4242,
                                     save_name=test_path + "b_training_1.jpg")
 
     with open(test_path + 'test_results.pickle', 'wb') as test_results:
         pickle.dump(res, test_results)
-
-
