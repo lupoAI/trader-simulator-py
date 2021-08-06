@@ -1,10 +1,8 @@
-from typing import Union
-
 import matplotlib.pyplot as plt
 from numpy import meshgrid, unique, nanmax, full, nan, array
 
 from market.data_model import AgentsInfo
-from market.simulator import Simulator, SimulatorFCN, SimulatorFCNExp
+from market.simulator import Simulator, SimulatorFCN, SimulatorFCNExp, SimulatorFCNGamma
 from typing import Union
 
 
@@ -52,7 +50,7 @@ class VisualizeSimulation:
 
 class VisualizeSimulationFCN(VisualizeSimulation):
 
-    def __init__(self, simulator: Union[SimulatorFCN, SimulatorFCNExp]):
+    def __init__(self, simulator: Union[SimulatorFCN, SimulatorFCNExp, SimulatorFCNGamma]):
         super().__init__(simulator)
         self.fundamental_price = simulator.fund_price_series
         self.agents = simulator.agents

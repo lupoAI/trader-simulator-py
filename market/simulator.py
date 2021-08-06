@@ -378,8 +378,12 @@ class SimulatorFCNGamma(Simulator):
                                     *self.agents_fcn[i],
                                     self.agents_time_window[i],
                                     self.agents_order_margin[i]) for i in range(self.n_fcn_agents)]
-        self.agents_gamma = [AgentGamma(self.exchange) for _ in range(self.n_gamma_agents)]
+        self.agents_gamma = [AgentGamma(self.exchange, rand_state.randint(2, 8)) for _ in range(self.n_gamma_agents)]
+        self.agents = [*self.agents_fcn, *self.agents_gamma]
+        self.agents_type = [0] * len(self.agents_fcn) + [1] * len(self.agents_gamma)
         self.fund_price_series = array([])
+        self.ewma_square_returns = None
+        self.ewma_alpha = 2 / (30 + 1)  # Same center of mass as a simple moving average with N=30
 
     def create_fundamental_price_series(self, n_steps, random_seed: int):
         rand_state = RandomState(random_seed)
@@ -408,23 +412,25 @@ class SimulatorFCNGamma(Simulator):
         minute_of_trade = time_of_trade.astype(int)
         minute_of_trade = minute_of_trade[minute_of_trade < n_steps]
         n_trades = len(minute_of_trade)
-        unique_minutes, count = np.unique(minute_of_trade, return_counts=True)
-        max_trade_per_min = np.max(count)
 
-        pr_fcn_agent = self.get_choice_between_fcn_and_gamma_traders(n_steps)
-        choice_agent = rand_state.uniform(size=(n_steps, max_trade_per_min))
-        choice_agent = (choice_agent < pr_fcn_agent).astype(int)
+        weight_fcn, weight_gamma = self.get_choice_between_fcn_and_gamma_traders(n_steps)
+        weights_through_time_fcn = np.ones((n_steps, len(self.agents_fcn))) * weight_fcn.reshape(-1, 1)
+        weights_through_time_gamma = np.ones((n_steps, len(self.agents_gamma))) * weight_gamma.reshape(-1, 1)
+        weights_through_time = np.concatenate((weights_through_time_fcn, weights_through_time_gamma), axis=1)
+        prob_through_time = weights_through_time / weights_through_time.sum(axis=1).reshape(-1, 1)
+        possible_choice = np.arange(0, len(self.agents))
 
-        fcn_agents = rand_state.randint(0, self.n_fcn_agents, size=n_trades)
-        gamma_agents = rand_state.randint(0, self.n_gamma_agents, size=n_trades)
         agents_noise = rand_state.normal(0, 0.0001, size=n_trades)
-        agents_volume = rand_state.randint(1, 5, size=n_trades)
+        agents_volume = rand_state.randint(10, 50, size=n_trades)
         agents_buy_outcome = rand_state.uniform(size=n_trades)
         orders_to_cancel = []
         current_minute = 0
         changed_period = True
         minute_trade_counter = 0
-        minutes_since_open = 0
+        open_price = self.initial_fund_price
+        self.ewma_square_returns = np.full((n_steps,), np.nan)
+        observed_first_valid_price = False
+        observed_second_valid_price = False
 
         for i in range(n_trades):
 
@@ -432,6 +438,10 @@ class SimulatorFCNGamma(Simulator):
                 changed_period = True
                 current_minute = minute_of_trade[i]
                 minutes_since_open = current_minute % MINUTES_IN_DAY
+                if minutes_since_open == 0:
+                    open_price = self.exchange.last_valid_mid_price
+                    if open_price is None:
+                        open_price = self.initial_fund_price
                 minute_trade_counter = 0
 
             if current_minute % snapshot_interval == 0 and current_minute > 0 and changed_period:
@@ -440,8 +450,10 @@ class SimulatorFCNGamma(Simulator):
             if changed_period:
                 orders_to_cancel += [[]]
 
-            if choice_agent[current_minute, minute_trade_counter] == 0:
-                time_window = self.agents_fcn[fcn_agents[i]].submit_time_window()
+            agent_choice = np.random.choice(possible_choice, p=prob_through_time[current_minute])
+
+            if self.agents_type[agent_choice] == 0:
+                time_window = self.agents[agent_choice].submit_time_window()
                 if time_window > current_minute - 1:
                     previous_price = None
                 else:
@@ -450,23 +462,35 @@ class SimulatorFCNGamma(Simulator):
                     else:
                         previous_price = self.last_mid_price_series[0]
 
-                self.agents_fcn[fcn_agents[i]].get_data(self.fund_price_series[current_minute], self.initial_fund_price,
-                                                        previous_price, agents_noise[i])
-                order_receipt = self.agents_fcn[fcn_agents[i]].decide_order(agents_volume[i], agents_buy_outcome[i])
-                orders_to_cancel[-1] += [(fcn_agents[i], order_receipt.order_id)]
+                self.agents[agent_choice].get_data(self.fund_price_series[current_minute], self.initial_fund_price,
+                                                   previous_price, agents_noise[i])
+                order_receipt = self.agents[agent_choice].decide_order(agents_volume[i], agents_buy_outcome[i])
+                orders_to_cancel[-1] += [(agent_choice, order_receipt.order_id)]
             else:
-                previous_price = self.last_mid_price_series[-minutes_since_open]
-                self.agents_gamma[gamma_agents[i]].get_data(self.initial_fund_price, previous_price)
-                order_receipt = self.agents_gamma[gamma_agents[i]].decide_order()  # Currently undefined
-                orders_to_cancel[-1] += [(fcn_agents[i], order_receipt.order_id)]
+                previous_price = open_price
+                self.agents[agent_choice].get_data(self.initial_fund_price, previous_price)
+                order_receipt = self.agents[agent_choice].decide_order()  # Currently undefined
+                orders_to_cancel[-1] += [(agent_choice, order_receipt.order_id)]
 
             if changed_period:
                 self.mid_price_series.add(current_minute, self.exchange.mid_price)
                 self.last_mid_price_series.add(current_minute, self.exchange.last_valid_mid_price)
+                if self.exchange.last_valid_mid_price is not None and observed_first_valid_price:
+                    observed_second_valid_price = True
+                if self.exchange.last_valid_mid_price is not None and not observed_first_valid_price:
+                    observed_first_valid_price = True
+                if observed_first_valid_price and observed_second_valid_price:
+                    square_return = (self.last_mid_price_series[-1] / self.last_mid_price_series[-2] - 1) ** 2
+                    if np.isnan(self.ewma_square_returns[current_minute - 1]):
+                        self.ewma_square_returns[current_minute] = square_return
+                    else:
+                        self.ewma_square_returns[current_minute] = square_return * self.ewma_alpha \
+                                                                   + (self.ewma_square_returns[current_minute - 1]
+                                                                      * (1 - self.ewma_alpha))
 
             if current_minute >= cancel_order_interval and changed_period:
                 for agent_id, order_id in orders_to_cancel[0]:
-                    self.agents_fcn[agent_id].cancel_order(order_id)
+                    self.agents[agent_id].cancel_order(order_id)
                 del orders_to_cancel[0]
 
             changed_period = False
@@ -483,4 +507,4 @@ class SimulatorFCNGamma(Simulator):
         weight_for_fcn = np.array([1] * len_simulation)
         tr = 50
         weight_for_gamma = np.exp(-(MINUTES_IN_DAY - tr - minutes_since_open) / tr)
-        return weight_for_fcn / (weight_for_fcn + weight_for_gamma)
+        return weight_for_fcn, weight_for_gamma

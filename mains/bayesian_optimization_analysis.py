@@ -101,8 +101,6 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
 
         total_loss[i] = aggregate_losses(losses)['total_loss'] * 0.5 + correlation_loss * 0.5
 
-    # TODO add visualization of close correlation loss
-
     print('total_loss:')
     print(total_loss)
 
