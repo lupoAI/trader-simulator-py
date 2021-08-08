@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from market.exchange import Exchange
-from market.simulator import SimulatorFCNExp
+from market.simulator import SimulatorFCNGamma
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import LossFunction, aggregate_losses
 from skopt import gp_minimize
@@ -35,6 +35,8 @@ def simulate_market(params):
     scale_chart = np.exp(y)
     scale_noise = np.exp(z)
 
+    gamma_traders_percentage = 0
+
     n_agents = 1000
     initial_fund_price = 5000
     fund_price_vol = 0.002
@@ -56,6 +58,7 @@ def simulate_market(params):
                             "initial_fund_price": initial_fund_price,
                             "fund_price_vol": fund_price_vol,
                             "fund_price_trend": fund_price_trend,
+                            "gamma_traders_percentage": gamma_traders_percentage,
                             "random_seed": random_seed_simulation}
 
     run_parameters = {"n_steps": n_steps,
@@ -65,7 +68,7 @@ def simulate_market(params):
                       "random_seed": random_seed_run}
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCNExp(exchange, **simulator_parameters)
+    simulator_fcn = SimulatorFCNGamma(exchange, **simulator_parameters)
     simulator_fcn.run(**run_parameters)
     simulation_price = simulator_fcn.last_mid_price_series
     simulated_market_visualizer = MarketVisualizer(simulation_price.price, is_simulated=True)

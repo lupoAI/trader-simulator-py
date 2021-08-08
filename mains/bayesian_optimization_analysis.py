@@ -6,7 +6,7 @@ import pandas as pd
 from analysis.optimizer import spherical_to_cartesian
 from analysis.loss_function import aggregate_losses
 from market.exchange import Exchange
-from market.simulator import SimulatorFCNExp
+from market.simulator import SimulatorFCNGamma
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import LossFunction
 from analysis.simulation_visualizer import VisualizeSimulationFCN
@@ -25,6 +25,8 @@ def log_to_linear(x, y, z):
 
 def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noise, target_market_visualizer,
                                      save_dir=None):
+    gamma_traders_percentage = 0#0.1
+
     n_agents = 1000
     initial_fund_price = 5000
     fund_price_vol = 0.002
@@ -43,7 +45,8 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
                             "n_agents": n_agents,
                             "initial_fund_price": initial_fund_price,
                             "fund_price_vol": fund_price_vol,
-                            "fund_price_trend": fund_price_trend}
+                            "fund_price_trend": fund_price_trend,
+                            "gamma_traders_percentage": gamma_traders_percentage}
 
     run_parameters = {"n_steps": n_steps,
                       "average_trades_per_step": trades_per_step,
@@ -62,7 +65,7 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
         run_parameters['random_seed'] = random_seed_run
 
         exchange = Exchange()
-        simulator_fcn = SimulatorFCNExp(exchange, **simulator_parameters)
+        simulator_fcn = SimulatorFCNGamma(exchange, **simulator_parameters)
         simulator_fcn.run(**run_parameters)
 
         visualizer = VisualizeSimulationFCN(simulator_fcn)
@@ -116,6 +119,8 @@ def mean_square_error(target, simulated):
 
 if __name__ == "__main__":
     import os
+
+    # TODO Add volatility multiplier
 
     test_number = 10
     test_path = f"../results/bayesian_optimization_training/test_{test_number}/"
