@@ -6,3 +6,4 @@ jax
 tqdm
 scikit-learn
 scikit-optimize~=0.8.1
+scipy

@@ -5,6 +5,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from typing import Union
 import os
+from scipy.stats import wasserstein_distance
 
 
 class StylizedFacts:
@@ -23,20 +24,20 @@ def compare_stylized_facts(stylized_facts: StylizedFacts, other_stylized_facts: 
     ax2 = plt.subplot2grid((4, 4), (0, 2), rowspan=2, colspan=2)
     ax3 = plt.subplot2grid((4, 4), (2, 0), rowspan=2, colspan=2)
     ax4 = plt.subplot2grid((4, 4), (2, 2), rowspan=2, colspan=2)
-    ax1.plot(stylized_facts.auto_correlation, color='red', label='1')
-    ax1.plot(other_stylized_facts.auto_correlation, color='blue', label='2')
+    ax1.plot(stylized_facts.auto_correlation, color='red', label='target')
+    ax1.plot(other_stylized_facts.auto_correlation, color='blue', label='simulation')
     ax1.grid(True)
     ax1.set_xticks(list(range(1, 11)))
     ax1.set_title('Auto-Correlation', size=10)
     ax1.legend(fontsize=8)
-    ax2.plot(stylized_facts.volatility_clustering, color='orange', label='1')
-    ax2.plot(other_stylized_facts.volatility_clustering, color='green', label='2')
+    ax2.plot(stylized_facts.volatility_clustering, color='orange', label='target')
+    ax2.plot(other_stylized_facts.volatility_clustering, color='green', label='simulation')
     ax2.grid(True)
     ax2.set_xticks(list(range(1, 11)))
     ax2.set_title('Volatility Clustering', size=10)
     ax2.legend(fontsize=8)
-    ax3.plot(stylized_facts.leverage_effect, color='purple', label='1')
-    ax3.plot(other_stylized_facts.leverage_effect, color='brown', label='2')
+    ax3.plot(stylized_facts.leverage_effect, color='purple', label='target')
+    ax3.plot(other_stylized_facts.leverage_effect, color='brown', label='simulation')
     ax3.grid(True)
     ax3.set_xticks(list(range(1, 11)))
     ax3.set_title('Leverage Effect', size=10)
@@ -44,8 +45,8 @@ def compare_stylized_facts(stylized_facts: StylizedFacts, other_stylized_facts: 
     bins = np.linspace(-50, 50, 1000)
     centers = (bins[1:] + bins[:-1]) / 2
     normal_distribution = normal_pdf(centers)
-    ax4.hist(stylized_facts.rets, bins=bins, density=True, label='1', alpha=0.5)
-    ax4.hist(other_stylized_facts.rets, bins=bins, density=True, label='2', alpha=0.5)
+    ax4.hist(stylized_facts.rets, bins=bins, density=True, label='target', alpha=0.5)
+    ax4.hist(other_stylized_facts.rets, bins=bins, density=True, label='simulation', alpha=0.5)
     ax4.plot(centers, normal_distribution, label='Normal PDF')
     ax4.set_xlim(-5, 5)
     ax4.set_xticks(list(range(-5, 6)))
@@ -53,6 +54,42 @@ def compare_stylized_facts(stylized_facts: StylizedFacts, other_stylized_facts: 
     ax4.legend(fontsize=8)
     plt.subplots_adjust(hspace=0.55, wspace=1)
     plt.suptitle(f'Markets comparison')
+    if save_name is not None:
+        plt.savefig(save_name)
+    plt.show()
+
+
+def plot_stylized_facts(stylized_facts: StylizedFacts, save_name: Union[str, None] = None):
+    ax1 = plt.subplot2grid((4, 4), (0, 0), rowspan=2, colspan=2)
+    ax2 = plt.subplot2grid((4, 4), (0, 2), rowspan=2, colspan=2)
+    ax3 = plt.subplot2grid((4, 4), (2, 0), rowspan=2, colspan=2)
+    ax4 = plt.subplot2grid((4, 4), (2, 2), rowspan=2, colspan=2)
+    ax1.plot(stylized_facts.auto_correlation, color='red')
+    ax1.grid(True)
+    ax1.set_xticks(list(range(1, 11)))
+    ax1.set_title('Auto-Correlation', size=10)
+    ax1.legend(fontsize=8)
+    ax2.plot(stylized_facts.volatility_clustering, color='orange')
+    ax2.grid(True)
+    ax2.set_xticks(list(range(1, 11)))
+    ax2.set_title('Volatility Clustering', size=10)
+    ax2.legend(fontsize=8)
+    ax3.plot(stylized_facts.leverage_effect, color='purple')
+    ax3.grid(True)
+    ax3.set_xticks(list(range(1, 11)))
+    ax3.set_title('Leverage Effect', size=10)
+    ax3.legend(fontsize=8)
+    bins = np.linspace(-50, 50, 1000)
+    centers = (bins[1:] + bins[:-1]) / 2
+    normal_distribution = normal_pdf(centers)
+    ax4.hist(stylized_facts.rets, bins=bins, density=True, alpha=0.5)
+    ax4.plot(centers, normal_distribution, label='Normal PDF')
+    ax4.set_xlim(-5, 5)
+    ax4.set_xticks(list(range(-5, 6)))
+    ax4.set_title('Return Distribution', size=10)
+    ax4.legend(fontsize=8)
+    plt.subplots_adjust(hspace=0.55, wspace=1)
+    plt.suptitle(f'Stylized Facts')
     if save_name is not None:
         plt.savefig(save_name)
     plt.show()
@@ -370,34 +407,35 @@ class MarketVisualizer(MarketVisualizerAbstract):
         else:
             stylized_facts = self.market_analyzer.get_market_metrics(returns_interval)
             other_stylized_facts = other.market_analyzer.get_market_metrics(returns_interval)
-        ax1 = plt.subplot2grid(shape=(3, 6), loc=(0, 0), colspan=6)
+        ax1 = plt.subplot2grid(shape=(4, 6), loc=(0, 0), colspan=6)
         ax1_1 = ax1.twiny()
-        ax2 = plt.subplot2grid((3, 6), (1, 0), colspan=2)
-        ax3 = plt.subplot2grid((3, 6), (1, 2), colspan=2)
-        ax4 = plt.subplot2grid((3, 6), (1, 4), colspan=2)
-        ax5 = plt.subplot2grid((3, 6), (2, 0), colspan=6)
+        ax2 = plt.subplot2grid((4, 6), (1, 0), colspan=3)
+        ax3 = plt.subplot2grid((4, 6), (1, 3), colspan=3)
+        ax4 = plt.subplot2grid((4, 6), (2, 3), colspan=3)
+        ax5 = plt.subplot2grid((4, 6), (3, 0), colspan=6)
+        ax6 = plt.subplot2grid((4, 6), (2, 0), colspan=3)
         scaled_market_prices = self.market_prices / self.market_prices[0]
         first_non_nan = other.market_prices[~np.isnan(other.market_prices)][0]
         scaled_other_market_prices = other.market_prices / first_non_nan
-        ax1.plot(scaled_market_prices, color='green', label='Price 1')
-        ax1_1.plot(scaled_other_market_prices, color='yellow', label='Price 2')
+        ax1.plot(scaled_market_prices, color='green', label='Price target')
+        ax1_1.plot(scaled_other_market_prices, color='red', label='Price simulation')
         ax1.grid(True)
         ax1.legend(fontsize=8)
         ax1_1.legend(fontsize=8)
-        ax2.plot(stylized_facts.auto_correlation, color='red', label='1')
-        ax2.plot(other_stylized_facts.auto_correlation, color='blue', label='2')
+        ax2.plot(stylized_facts.auto_correlation, color='red', label='target')
+        ax2.plot(other_stylized_facts.auto_correlation, color='blue', label='simulation')
         ax2.grid(True)
         ax2.set_xticks(list(range(1, 11)))
         ax2.set_title('Auto-Correlation', size=10)
         ax2.legend(fontsize=8)
-        ax3.plot(stylized_facts.volatility_clustering, color='orange', label='1')
-        ax3.plot(other_stylized_facts.volatility_clustering, color='green', label='2')
+        ax3.plot(stylized_facts.volatility_clustering, color='orange', label='target')
+        ax3.plot(other_stylized_facts.volatility_clustering, color='green', label='simulation')
         ax3.grid(True)
         ax3.set_xticks(list(range(1, 11)))
         ax3.set_title('Volatility Clustering', size=10)
         ax3.legend(fontsize=8)
-        ax4.plot(stylized_facts.leverage_effect, color='purple', label='1')
-        ax4.plot(other_stylized_facts.leverage_effect, color='brown', label='2')
+        ax4.plot(stylized_facts.leverage_effect, color='purple', label='target')
+        ax4.plot(other_stylized_facts.leverage_effect, color='brown', label='simulation')
         ax4.grid(True)
         ax4.set_xticks(list(range(1, 11)))
         ax4.set_title('Leverage Effect', size=10)
@@ -405,18 +443,123 @@ class MarketVisualizer(MarketVisualizerAbstract):
         bins = np.linspace(-50, 50, 1000)
         centers = (bins[1:] + bins[:-1]) / 2
         normal_distribution = normal_pdf(centers)
-        ax5.hist(stylized_facts.rets, bins=bins, density=True, label='1', alpha=0.5)
-        ax5.hist(other_stylized_facts.rets, bins=bins, density=True, label='2', alpha=0.5)
+        ax5.hist(stylized_facts.rets, bins=bins, density=True, label='target', alpha=0.5)
+        ax5.hist(other_stylized_facts.rets, bins=bins, density=True, label='simulation', alpha=0.5)
         ax5.plot(centers, normal_distribution, label='Normal PDF')
         ax5.set_xlim(-5, 5)
         ax5.set_xticks(list(range(-5, 6)))
         ax5.set_title('Return Distribution', size=10)
         ax5.legend(fontsize=8)
-        plt.subplots_adjust(hspace=0.55, wspace=1)
+        loss = LossFunction(stylized_facts, other_stylized_facts)
+        loss.compute_loss()
+        labels = ['$l^{ac}$', '$l^{vc}$', '$l^{le}$', '$l^{ft}$']
+        colors = ['blue', 'red', 'green', 'orange']
+        values = [loss.auto_correlation_loss, loss.volatility_clustering_loss, loss.leverage_effect_loss,
+                  loss.distribution_loss]
+        ax6.barh(list(range(4)), values, tick_label=labels, color=colors)
+        ax6.set_title("Losses", size=10)
+        ax6.grid(True)
+        plt.subplots_adjust(hspace=0.70, wspace=1)
         plt.suptitle(f'Markets comparison for {returns_interval} periods returns')
         if save_name is not None:
             plt.savefig(save_name)
         plt.show()
+
+
+    def visualize_close_auto_correlation(self, save_name: Union[str, None] = None):
+        target_close_correlation = self.market_analyzer.get_close_auto_correlation()
+        ticks = list(range(1, 6))
+        labels = ['$\\frac{1}{2}$', '$\\frac{6}{10}$', '$\\frac{7}{10}$', '$\\frac{8}{10}$', '$\\frac{9}{10}$']
+
+        plt.plot(ticks, target_close_correlation)
+        plt.title('Close Correlation')
+        plt.ylabel('Correlation')
+        plt.xticks(ticks, labels)
+        if save_name is not None:
+            plt.savefig(save_name)
+        plt.show()
+
+    def compare_close_auto_correlation(self, other: MarketVisualizerAbstract, save_name: Union[str, None] = None):
+        target_close_correlation = self.market_analyzer.get_close_auto_correlation()
+        simulated_close_correlation = other.market_analyzer.get_close_auto_correlation()
+        ticks = list(range(1, 6))
+        labels = ['$\\frac{1}{2}$', '$\\frac{6}{10}$', '$\\frac{7}{10}$', '$\\frac{8}{10}$', '$\\frac{9}{10}$']
+
+        plt.plot(ticks, target_close_correlation, label='target')
+        plt.plot(ticks, simulated_close_correlation, label='simulated')
+        plt.legend()
+        plt.title('Close Correlation')
+        plt.xlabel('Correlation')
+        plt.xticks(ticks, labels)
+        if save_name is not None:
+            plt.savefig(save_name)
+        plt.show()
+
+
+class LossFunction:
+
+    def __init__(self, target_facts: StylizedFacts, simulated_facts: StylizedFacts):
+        self.target_facts = target_facts
+        self.simulated_facts = simulated_facts
+        self.auto_correlation_loss = None
+        self.volatility_clustering_loss = None
+        self.leverage_effect_loss = None
+        self.distribution_loss = None
+        self.total_loss = None
+
+    def compute_loss(self):
+        if self.auto_correlation_loss is None:
+            self.compute_auto_correlation_loss()
+        if self.volatility_clustering_loss is None:
+            self.compute_volatility_clustering_loss()
+        if self.leverage_effect_loss is None:
+            self.compute_leverage_effect_loss()
+        if self.distribution_loss is None:
+            self.compute_distribution_loss()
+        total_loss = 0
+        total_loss += self.auto_correlation_loss
+        total_loss += self.volatility_clustering_loss
+        total_loss += self.leverage_effect_loss
+        total_loss += self.distribution_loss
+        total_loss /= 4
+        self.total_loss = total_loss
+        return total_loss
+
+    def compute_auto_correlation_loss(self):
+        target = self.target_facts.auto_correlation
+        simulation = self.simulated_facts.auto_correlation
+        loss = np.abs(target.values - simulation.values).mean()
+        self.auto_correlation_loss = loss
+
+    def compute_volatility_clustering_loss(self):
+        target = self.target_facts.volatility_clustering
+        simulation = self.simulated_facts.volatility_clustering
+        loss = np.abs(target.values - simulation.values).mean()
+        self.volatility_clustering_loss = loss
+
+    def compute_leverage_effect_loss(self):
+        target = self.target_facts.leverage_effect
+        simulation = self.simulated_facts.leverage_effect
+        loss = np.abs(target.values - simulation.values).mean()
+        self.leverage_effect_loss = loss
+
+    def compute_distribution_loss(self):
+        # target = self.target_facts.density
+        # simulation = self.simulated_facts.density
+        # loss = wasserstein_distance(target.index.values, simulation.index.values,
+        #                             target.values, simulation.values)
+        target = self.target_facts.rets
+        simulation = self.simulated_facts.rets
+        loss = wasserstein_distance(target, simulation)
+        self.distribution_loss = loss
+
+    def to_df(self):
+        columns = ["auto_correlation_loss", "volatility_clustering_loss",
+                   "leverage_effect_loss", "distribution_loss", "total_loss"]
+        values = [[self.auto_correlation_loss, self.volatility_clustering_loss,
+                   self.leverage_effect_loss, self.distribution_loss, self.total_loss]]
+
+        return pd.DataFrame(values, columns=columns)
 
 
 def normal_pdf(values):

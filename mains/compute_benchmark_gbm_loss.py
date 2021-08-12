@@ -1,4 +1,5 @@
-from analysis.market_analyzer import SimulatedMarketAnalyzer, MarketDataAnalyzer, compare_stylized_facts
+from analysis.market_analyzer import MarketVisualizer, SimulatedMarketAnalyzer, MarketDataAnalyzer, \
+    compare_stylized_facts
 from analysis.loss_function import LossFunction
 import numpy as np
 from numpy.random import RandomState
@@ -16,6 +17,7 @@ data = pd.read_csv('../data/spx/SPX_1min.txt', header=None, index_col=0, parse_d
 data = data.drop(columns=[5])
 data.columns = headers
 real_market_analyzer = MarketDataAnalyzer(data)
+real_market_visualizer = MarketVisualizer(data)
 
 n_series = 300
 n_steps = 10000
@@ -31,6 +33,13 @@ random_state = RandomState(random_seed)
 gauss = random_state.normal(size=(n_steps, n_series))
 gmb = np.exp(trend / T + np.sqrt(1 / T) * vol * gauss)
 gmb = starting_price * gmb.cumprod(axis=0)
+
+simulated_market_visualizer = MarketVisualizer(gmb[:, 0], is_simulated=True)
+# simulated_market_visualizer.visualize_market(1, '../results/compute_benchmark_gbm_loss/gbm_stylized_1m.jpg')
+# simulated_market_visualizer.visualize_market(30, '../results/compute_benchmark_gbm_loss/gbm_stylized_30m.jpg')
+
+real_market_visualizer.compare_market(1, simulated_market_visualizer,
+                                      '../results/compute_benchmark_gbm_loss/gbm_loss.jpg')
 
 time_series = []
 for i in tqdm(range(n_series)):
@@ -66,10 +75,9 @@ real_close_correlation = real_market_analyzer.get_close_auto_correlation()
 close_correlation_loss = pd.Series(name='close_correlation_loss', dtype=np.float)
 for i, time_s in enumerate(time_series):
     simulated_close_correlation = time_s.get_close_auto_correlation()
-    close_correlation_loss.loc[i] = ((real_close_correlation - simulated_close_correlation) ** 2).mean()
+    close_correlation_loss.loc[i] = np.abs(real_close_correlation - simulated_close_correlation).mean()
 
 close_correlation_loss.to_csv("../results/compute_benchmark_gbm_loss/benchmark_close_correlation_loss.csv", index=False)
-
 
 mean_loss = pd.DataFrame(index=list_rets, columns=columns)
 std_loss = pd.DataFrame(index=list_rets, columns=columns)

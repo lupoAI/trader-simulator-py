@@ -93,20 +93,20 @@ def simulate_market(params):
         loss.compute_loss()
         losses += [loss]
 
-    correlation_loss = mean_square_error(real_market_visualizer.market_analyzer.get_close_auto_correlation(),
-                                         simulated_market_visualizer.market_analyzer.get_close_auto_correlation())
+    correlation_loss = mean_absolute_error(real_market_visualizer.market_analyzer.get_close_auto_correlation(),
+                                           simulated_market_visualizer.market_analyzer.get_close_auto_correlation())
 
     total_loss = aggregate_losses(losses)
 
-    final_loss = correlation_loss * 0.5 + total_loss["total_loss"] * 0.5
+    final_loss = correlation_loss + total_loss["total_loss"] * 5
 
     log_loss = np.log(final_loss)
 
     return log_loss
 
 
-def mean_square_error(target, simulated):
-    return ((target - simulated)**2).mean()
+def mean_absolute_error(target, simulated):
+    return (np.abs(target - simulated)).mean()
 
 
 def simulate_market_multiprocessing(params):

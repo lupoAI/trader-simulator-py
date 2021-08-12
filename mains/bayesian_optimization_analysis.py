@@ -91,7 +91,7 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
 
         target_close_correlation = target_market_visualizer.market_analyzer.get_close_auto_correlation()
         simulated_close_correlation = simulated_market_visualizer.market_analyzer.get_close_auto_correlation()
-        correlation_loss = mean_square_error(target_close_correlation, simulated_close_correlation)
+        correlation_loss = mean_absolute_error(target_close_correlation, simulated_close_correlation)
 
         plt.plot(target_close_correlation, label='target correlation')
         plt.plot(simulated_close_correlation, label='simulated correlation')
@@ -113,8 +113,8 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
     return total_loss
 
 
-def mean_square_error(target, simulated):
-    return ((target - simulated)**2).mean()
+def mean_absolute_error(target, simulated):
+    return (np.abs(target - simulated)).mean()
 
 
 if __name__ == "__main__":

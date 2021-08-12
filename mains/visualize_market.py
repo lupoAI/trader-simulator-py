@@ -1,4 +1,4 @@
-from analysis.market_analyzer import MarketVisualizer
+from analysis.market_analyzer import MarketVisualizer, plot_stylized_facts
 from market.simulator import RandomSimulator
 from market.exchange import Exchange
 import pandas as pd
@@ -16,6 +16,7 @@ data.columns = headers
 real_market_visualizer = MarketVisualizer(data)
 real_market_visualizer.visualize_market(1, '../results/visualize_market/spx_1m_rets_market.jpg')
 features_1m = real_market_visualizer.market_analyzer.get_market_metrics(1)
+plot_stylized_facts(features_1m)
 real_market_visualizer.visualize_market(5, '../results/visualize_market/spx_5m_rets_market.jpg')
 features_5m = real_market_visualizer.market_analyzer.get_market_metrics(5)
 real_market_visualizer.visualize_market(15, '../results/visualize_market/spx_15m_rets_market.jpg')
@@ -24,7 +25,7 @@ real_market_visualizer.visualize_market(30, '../results/visualize_market/spx_30m
 features_30m = real_market_visualizer.market_analyzer.get_market_metrics(30)
 real_market_visualizer.visualize_market('1d', '../results/visualize_market/spx_1d_rets_market.jpg')
 features_1d = real_market_visualizer.market_analyzer.get_daily_market_metrics()
-
+real_market_visualizer.visualize_close_auto_correlation('../results/visualize_market/spx_close_corr.jpg')
 features_close = real_market_visualizer.market_analyzer.get_close_auto_correlation()
 
 with open('../data/spx_processed/features_1m.pickle', 'wb') as f_1m:

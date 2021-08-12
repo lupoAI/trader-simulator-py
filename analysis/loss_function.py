@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from analysis.market_analyzer import StylizedFacts
-from utilities.scipy_utils import wasserstein_distance
+from scipy.stats import wasserstein_distance
 
 
 def aggregate_losses(loss_list):
@@ -49,7 +49,7 @@ class LossFunction:
         total_loss += self.volatility_clustering_loss
         total_loss += self.leverage_effect_loss
         # Scale the distribution function
-        total_loss += self.distribution_loss / 100
+        total_loss += self.distribution_loss
         total_loss /= 4
         self.total_loss = total_loss
         return total_loss
@@ -57,19 +57,19 @@ class LossFunction:
     def compute_auto_correlation_loss(self):
         target = self.target_facts.auto_correlation
         simulation = self.simulated_facts.auto_correlation
-        loss = ((target.values - simulation.values) ** 2).mean()
+        loss = np.abs(target.values - simulation.values).mean()
         self.auto_correlation_loss = loss
 
     def compute_volatility_clustering_loss(self):
         target = self.target_facts.volatility_clustering
         simulation = self.simulated_facts.volatility_clustering
-        loss = ((target.values - simulation.values) ** 2).mean()
+        loss = np.abs(target.values - simulation.values).mean()
         self.volatility_clustering_loss = loss
 
     def compute_leverage_effect_loss(self):
         target = self.target_facts.leverage_effect
         simulation = self.simulated_facts.leverage_effect
-        loss = ((target.values - simulation.values) ** 2).mean()
+        loss = np.abs(target.values - simulation.values).mean()
         self.leverage_effect_loss = loss
 
     def compute_distribution_loss(self):
