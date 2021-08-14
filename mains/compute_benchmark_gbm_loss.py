@@ -1,6 +1,6 @@
 from analysis.market_analyzer import MarketVisualizer, SimulatedMarketAnalyzer, MarketDataAnalyzer, \
     compare_stylized_facts
-from analysis.loss_function import LossFunction
+from analysis.loss_function import LossFunction, compute_total_loss
 import numpy as np
 from numpy.random import RandomState
 import pandas as pd
@@ -31,19 +31,22 @@ show_samples = False
 
 random_state = RandomState(random_seed)
 gauss = random_state.normal(size=(n_steps, n_series))
-gmb = np.exp(trend / T + np.sqrt(1 / T) * vol * gauss)
-gmb = starting_price * gmb.cumprod(axis=0)
+gbm = np.exp(trend / T + np.sqrt(1 / T) * vol * gauss)
+gbm = starting_price * gbm.cumprod(axis=0)
 
-simulated_market_visualizer = MarketVisualizer(gmb[:, 0], is_simulated=True)
+simulated_market_visualizer = MarketVisualizer(gbm[:, 0], is_simulated=True)
 # simulated_market_visualizer.visualize_market(1, '../results/compute_benchmark_gbm_loss/gbm_stylized_1m.jpg')
 # simulated_market_visualizer.visualize_market(30, '../results/compute_benchmark_gbm_loss/gbm_stylized_30m.jpg')
 
 real_market_visualizer.compare_market(1, simulated_market_visualizer,
                                       '../results/compute_benchmark_gbm_loss/gbm_loss.jpg')
 
+total_loss = compute_total_loss(gbm[:, 0], "GBM")
+print(f"Total Loss wrt SPX: {total_loss}")
+
 time_series = []
 for i in tqdm(range(n_series)):
-    series = pd.Series(gmb[:, i], name='Close')
+    series = pd.Series(gbm[:, i], name='Close')
     time_series += [SimulatedMarketAnalyzer(series)]
 
 stylized_facts = {}

@@ -60,7 +60,7 @@ class RandomSimulator(Simulator):
         offset = rand_state.normal(0, vol, size=size_matrix)
         multiplier = np.exp(offset + vol_adjustment + mu)
         orders_to_cancel = {}
-        for i in range(n_steps):
+        for i in tqdm(range(n_steps)):
             if i % snapshot_interval == 0 and i > 0:
                 self.save_market_snapshot(i)
 
@@ -137,7 +137,7 @@ class SimulatorFCN(Simulator):
         agents_volume = rand_state.randint(1, 5, size=size_matrix)
         agents_buy_outcome = rand_state.uniform(size=size_matrix)
         orders_to_cancel = {}
-        for i in range(n_steps):
+        for i in tqdm(range(n_steps)):
             if i % snapshot_interval == 0 and i > 0:
                 self.save_market_snapshot(i)
 

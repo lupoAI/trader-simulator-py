@@ -452,11 +452,11 @@ class MarketVisualizer(MarketVisualizerAbstract):
         ax5.legend(fontsize=8)
         loss = LossFunction(stylized_facts, other_stylized_facts)
         loss.compute_loss()
-        labels = ['$l^{ac}$', '$l^{vc}$', '$l^{le}$', '$l^{ft}$']
-        colors = ['blue', 'red', 'green', 'orange']
+        labels = ['$l^{ac}$', '$l^{vc}$', '$l^{le}$', '$l^{ft}$', '$l^{mean}$']
+        colors = ['blue', 'red', 'green', 'orange', 'purple']
         values = [loss.auto_correlation_loss, loss.volatility_clustering_loss, loss.leverage_effect_loss,
-                  loss.distribution_loss]
-        ax6.barh(list(range(4)), values, tick_label=labels, color=colors)
+                  loss.distribution_loss, loss.total_loss]
+        ax6.barh(list(range(5)), values, tick_label=labels, color=colors)
         ax6.set_title("Losses", size=10)
         ax6.grid(True)
         plt.subplots_adjust(hspace=0.70, wspace=1)
@@ -464,7 +464,6 @@ class MarketVisualizer(MarketVisualizerAbstract):
         if save_name is not None:
             plt.savefig(save_name)
         plt.show()
-
 
     def visualize_close_auto_correlation(self, save_name: Union[str, None] = None):
         target_close_correlation = self.market_analyzer.get_close_auto_correlation()
@@ -475,6 +474,7 @@ class MarketVisualizer(MarketVisualizerAbstract):
         plt.title('Close Correlation')
         plt.ylabel('Correlation')
         plt.xticks(ticks, labels)
+        plt.grid(True)
         if save_name is not None:
             plt.savefig(save_name)
         plt.show()

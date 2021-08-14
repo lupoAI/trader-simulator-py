@@ -2,7 +2,7 @@ from sklearn.linear_model import LinearRegression
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
-from analysis.market_analyzer import StylizedFacts
+from analysis.market_analyzer import StylizedFacts, MarketVisualizer
 from scipy.stats import wasserstein_distance
 
 
@@ -115,3 +115,54 @@ class LossAnalyzer:
         if save_name is not None:
             plt.savefig(save_name)
         plt.show()
+
+
+def compute_total_loss(price_series, name_simulator: str):
+    simulated_market_visualizer = MarketVisualizer(price_series, is_simulated=True)
+
+    headers = ['Open', 'High', 'Low', 'Close']
+    data = pd.read_csv('../data/spx/SPX_1min.txt', header=None, index_col=0, parse_dates=[0])
+    data = data.drop(columns=[5])
+    data.columns = headers
+    real_market_visualizer = MarketVisualizer(data)
+
+    rets_int = [1, 5, 15, 30, "1d"]
+    losses = []
+    t_losses = []
+    for ret in rets_int:
+
+        if ret == '1d':
+            loss = LossFunction(real_market_visualizer.market_analyzer.get_daily_market_metrics(),
+                                simulated_market_visualizer.market_analyzer.get_daily_market_metrics())
+        else:
+            loss = LossFunction(real_market_visualizer.market_analyzer.get_market_metrics(ret),
+                                simulated_market_visualizer.market_analyzer.get_market_metrics(ret))
+        loss.compute_loss()
+        losses += [loss]
+        t_losses += [loss.total_loss]
+
+    correlation_loss = mean_absolute_error(real_market_visualizer.market_analyzer.get_close_auto_correlation(),
+                                           simulated_market_visualizer.market_analyzer.get_close_auto_correlation())
+
+    rets_int += ['close']
+    t_losses += [correlation_loss]
+
+    total_loss = aggregate_losses(losses)
+
+    final_loss = correlation_loss + total_loss["total_loss"] * 5
+    labels = ["$l_{" + str(x) + "}$" for x in rets_int]
+    labels += ["$\\frac{L}{6}$"]
+    t_losses += [final_loss / 6]
+    colors = ['blue', 'green', 'orange', 'purple', 'red', 'brown', 'yellow']
+
+    plt.barh(list(range(len(t_losses))), t_losses, tick_label=labels, color=colors)
+    plt.title(f'Losses per Time Horizons for {name_simulator}')
+    plt.xlabel('Loss')
+    plt.grid(True)
+    plt.show()
+
+    return final_loss
+
+
+def mean_absolute_error(target, simulated):
+    return (np.abs(target - simulated)).mean()
