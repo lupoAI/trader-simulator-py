@@ -9,7 +9,7 @@ if __name__ == "__main__":
         os.makedirs('../results/visualize_fcn/')
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001)
+    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001, scale_fund=0.2, scale_chart=0.1, scale_noise=0.7)
     simulator_fcn.run(1000, 10, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()
@@ -30,7 +30,7 @@ if __name__ == "__main__":
     from market.exchange import Exchange
 
     exchange = Exchange()
-    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001)
+    simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001, scale_fund=0.2, scale_chart=0.1, scale_noise=0.7)
     simulator_fcn.run(10000, 5, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()

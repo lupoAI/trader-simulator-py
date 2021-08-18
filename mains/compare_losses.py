@@ -5,7 +5,7 @@ from numpy.random import RandomState
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import compute_total_loss
 from market.exchange import Exchange
-from market.simulator import RandomSimulator
+from market.simulator import RandomSimulator, SimulatorPaper1, SimulatorFCN
 from analysis.simulation_visualizer import VisualizeSimulation
 
 if not os.path.exists("../results/compare_losses/"):
@@ -64,6 +64,38 @@ print(f"Total Loss wrt SPX: {total_loss}")
 
 # Exponential Simulator
 
+exchange = Exchange()
+simulator_paper_1 = SimulatorPaper1(exchange, 10000, 10000, 10000000, 1000)
+simulator_paper_1.run(200000 * 60, 600, 5, 0.005, 1, 2000)
+
+price_df = pd.Series(simulator_paper_1.mid_price_series.price, index=simulator_paper_1.mid_price_series.time_step)
+long_price_df = pd.Series(index=np.arange(0, simulator_paper_1.mid_price_series.time_step[-1] + 1), dtype=np.float64)
+long_price_df.loc[price_df.index] = price_df.values
+long_price_df = long_price_df.ffill().dropna()
+minute_price_df = long_price_df.loc[::60]
+
+simulated_market_visualizer = MarketVisualizer(minute_price_df.values, is_simulated=True)
+
+real_market_visualizer.compare_market("1d", simulated_market_visualizer,
+                                      '../results/compare_losses/facts_comparison.jpg')
+
+total_loss = compute_total_loss(minute_price_df.values, "ExponentialSimulator")
+print(f"Total Loss wrt SPX: {total_loss}")
+
+
 # FCN Simulator
+
+exchange = Exchange()
+simulator_fcn = SimulatorFCN(exchange, 100, 500, 0.001, scale_fund=0.2, scale_chart=0.1, scale_noise=0.7,
+                             fund_price_trend=0, random_seed=101)
+simulator_fcn.run(200000, 10, 5, 20)
+
+simulated_market_visualizer = MarketVisualizer(simulator_fcn.last_mid_price_series.price, is_simulated=True)
+
+real_market_visualizer.compare_market("1d", simulated_market_visualizer,
+                                      '../results/compare_losses/fcn_stats.jpg')
+
+total_loss = compute_total_loss(simulator_fcn.last_mid_price_series.price, "SimulatorFCN")
+print(f"Total Loss wrt SPX: {total_loss}")
 
 # FCN Gamma Simulator

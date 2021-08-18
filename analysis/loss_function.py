@@ -161,6 +161,10 @@ def compute_total_loss(price_series, name_simulator: str):
     plt.grid(True)
     plt.show()
 
+    print(name_simulator)
+    print(labels)
+    print(t_losses)
+
     return final_loss
 
 

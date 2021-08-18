@@ -31,7 +31,7 @@ show_samples = False
 
 random_state = RandomState(random_seed)
 gauss = random_state.normal(size=(n_steps, n_series))
-gbm = np.exp(trend / T + np.sqrt(1 / T) * vol * gauss)
+gbm = np.exp(trend / T + np.sqrt(1 / T) * vol * gauss - 0.5 / T * vol ** 2)
 gbm = starting_price * gbm.cumprod(axis=0)
 
 simulated_market_visualizer = MarketVisualizer(gbm[:, 0], is_simulated=True)

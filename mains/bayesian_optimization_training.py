@@ -24,7 +24,7 @@ if __name__ == "__main__":
     res = use_bayesian_optimization([(-np.pi, np.pi),
                                      (0, np.pi)],
                                     acq_func="EI",
-                                    n_calls=100,
+                                    n_calls=200,
                                     n_random_starts=60,
                                     noise="gaussian",
                                     random_state=4242,
