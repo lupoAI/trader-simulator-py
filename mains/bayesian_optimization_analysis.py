@@ -10,6 +10,7 @@ from market.simulator import SimulatorFCNGamma
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import LossFunction
 from analysis.simulation_visualizer import VisualizeSimulationFCN
+from skopt.plots import plot_convergence
 
 
 def values_to_proportion(x, y, z):
@@ -122,7 +123,7 @@ if __name__ == "__main__":
 
     # TODO Add volatility multiplier
 
-    test_number = 10
+    test_number = 11
     test_path = f"../results/bayesian_optimization_training/test_{test_number}/"
     test_path_analysis = f"../results/bayesian_optimization_analysis/test_{test_number}/"
     n_sims = 2
@@ -135,6 +136,8 @@ if __name__ == "__main__":
 
     with open(test_path + 'test_results.pickle', 'rb') as test_results:
         res = pickle.load(test_results)
+
+    plot_convergence(res)
 
     fund, chart, noise = spherical_to_cartesian(1.5, *res.x)
     fund, chart, noise = log_to_linear(fund, chart, noise)

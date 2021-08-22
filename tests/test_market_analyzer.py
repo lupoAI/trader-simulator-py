@@ -20,7 +20,7 @@ def test_deleting_market_analyzer_works():
     random_simulator.run(500, 20, 500, 5, 20)
     prices = random_simulator.last_mid_price_series.price
     market_visualizer = MarketVisualizer(prices, is_simulated=True)
-    market_visualizer.visualize_market(15)
+    # market_visualizer.visualize_market(15)
     del exchange
     del random_simulator
     del market_visualizer
@@ -29,5 +29,5 @@ def test_deleting_market_analyzer_works():
     random_simulator.run(500, 20, 500, 5, 20)
     prices = random_simulator.last_mid_price_series.price
     market_visualizer = MarketVisualizer(prices, is_simulated=True)
-    market_visualizer.visualize_market(15)
+    # market_visualizer.visualize_market(15)
     assert len(prices) == 500
