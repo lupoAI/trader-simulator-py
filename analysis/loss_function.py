@@ -157,7 +157,8 @@ def compute_total_loss(price_series, name_simulator: str):
 
     plt.barh(list(range(len(t_losses))), t_losses, tick_label=labels, color=colors)
     plt.title(f'Losses per Time Horizons for {name_simulator}')
-    plt.xlabel('Loss')
+    plt.xlabel('Loss for Component')
+    plt.yticks(fontsize=20)
     plt.grid(True)
     plt.show()
 

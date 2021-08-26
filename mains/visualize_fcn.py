@@ -1,4 +1,5 @@
 from analysis.simulation_visualizer import VisualizeSimulationFCN
+import matplotlib.pyplot as plt
 
 if __name__ == "__main__":
     from market.simulator import SimulatorFCN
@@ -14,13 +15,13 @@ if __name__ == "__main__":
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()
     visualizer.plot_save_and_show("../results/visualize_fcn/fcn_lbo_heatmap.jpg")
-    visualizer.compute_agents_info()
-    visualizer.plot_agents_attributes_vs_parameters('value_portfolio')
-    visualizer.plot_save_and_show("../results/visualize_fcn/value_portfolio_vs_parameters.jpg", False)
-    visualizer.plot_agents_attributes_vs_parameters('cash')
-    visualizer.plot_save_and_show("../results/visualize_fcn/cash_vs_parameters.jpg", False)
-    visualizer.plot_agents_attributes_vs_parameters('stock')
-    visualizer.plot_save_and_show("../results/visualize_fcn/stock_vs_parameters.jpg", False)
+    # visualizer.compute_agents_info()
+    # visualizer.plot_agents_attributes_vs_parameters('value_portfolio')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/value_portfolio_vs_parameters.jpg", False)
+    # visualizer.plot_agents_attributes_vs_parameters('cash')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/cash_vs_parameters.jpg", False)
+    # visualizer.plot_agents_attributes_vs_parameters('stock')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/stock_vs_parameters.jpg", False)
     del exchange
     del simulator_fcn
     del visualizer
@@ -34,14 +35,17 @@ if __name__ == "__main__":
     simulator_fcn.run(10000, 5, 5, 20)
     visualizer = VisualizeSimulationFCN(simulator_fcn)
     visualizer.plot_order_book()
+    plt.vlines([3400, 4100, 4800, 5600], 360, 580, colors=['purple', 'yellow', 'brown', 'yellow'], linewidth=4)
+    plt.ylim((360, 580))
+    plt.grid(True)
     visualizer.plot_save_and_show("../results/visualize_fcn/fcn_lbo_heatmap_1000.jpg")
-    visualizer.compute_agents_info()
-    visualizer.plot_agents_attributes_vs_parameters('value_portfolio')
-    visualizer.plot_save_and_show("../results/visualize_fcn/value_portfolio_vs_parameters.jpg", False)
-    visualizer.plot_agents_attributes_vs_parameters('cash')
-    visualizer.plot_save_and_show("../results/visualize_fcn/cash_vs_parameters.jpg", False)
-    visualizer.plot_agents_attributes_vs_parameters('stock')
-    visualizer.plot_save_and_show("../results/visualize_fcn/stock_vs_parameters.jpg", False)
+    # visualizer.compute_agents_info()
+    # visualizer.plot_agents_attributes_vs_parameters('value_portfolio')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/value_portfolio_vs_parameters.jpg", False)
+    # visualizer.plot_agents_attributes_vs_parameters('cash')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/cash_vs_parameters.jpg", False)
+    # visualizer.plot_agents_attributes_vs_parameters('stock')
+    # visualizer.plot_save_and_show("../results/visualize_fcn/stock_vs_parameters.jpg", False)
     del exchange
     del simulator_fcn
     del visualizer

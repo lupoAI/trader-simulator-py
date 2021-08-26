@@ -43,9 +43,9 @@ def simulate_market(params):
     fund_price_trend = 0
     random_seed_simulation = np.random.randint(0, 1e6)  # 42
 
-    n_steps = 20000
+    n_steps = 40000
     trades_per_step = 2
-    snapshot_interval = 5
+    snapshot_interval = 10000
     cancel_order_interval = 20
     random_seed_run = np.random.randint(0, 1e6)  # 42
 

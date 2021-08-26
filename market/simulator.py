@@ -352,7 +352,7 @@ class SimulatorFCNGamma(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
                  scale_fund=None, scale_chart=None, scale_noise=None, gamma_traders_percentage=0, fund_price_trend=0,
-                 random_seed: int = 42):
+                 random_seed: int = 42, order_margin=0.02, min_lookback=500, lookback_range=500):
         super().__init__(exchange, n_agents)
         self.fund_price_vol = fund_price_vol
         self.fund_price_trend = fund_price_trend
@@ -374,8 +374,9 @@ class SimulatorFCNGamma(Simulator):
         self.n_fcn_agents = n_agents - self.n_gamma_agents
         self.agents_fcn = rand_state.exponential(size=(self.n_fcn_agents, 3))
         self.agents_fcn *= array([[self.scale_fund, self.scale_chart, self.scale_noise]])
-        self.agents_time_window = rand_state.randint(500, 1001, size=(self.n_fcn_agents,))  # Modify
-        self.agents_order_margin = rand_state.uniform(0, 0.02, size=(self.n_fcn_agents,))  # Modify
+        self.agents_time_window = rand_state.randint(min_lookback, min_lookback + lookback_range + 1,
+                                                     size=(self.n_fcn_agents,))
+        self.agents_order_margin = rand_state.uniform(0, order_margin, size=(self.n_fcn_agents,))
         self.agents_fcn = [AgentFCN(self.exchange,
                                     *self.agents_fcn[i],
                                     self.agents_time_window[i],
@@ -482,7 +483,8 @@ class SimulatorFCNGamma(Simulator):
             agent_choice = np.random.choice(possible_choice, p=prob_through_time[current_minute])
 
             if started_ewma:
-                volume_multiplier = np.sqrt(self.ewma_square_returns[-1]) / 0.004  # self.ewma_square_returns[-1] / 0.004 ** 2 #  np.sqrt(self.ewma_square_returns[-1]) / 0.004
+                volume_multiplier = np.sqrt(self.ewma_square_returns[
+                                                -1]) / 0.004  # self.ewma_square_returns[-1] / 0.004 ** 2 #  np.sqrt(self.ewma_square_returns[-1]) / 0.004
             else:
                 volume_multiplier = 1
 
