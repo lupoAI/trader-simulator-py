@@ -28,12 +28,13 @@ if __name__ == "__main__":
                                      (0.005, 0.05),
                                      (100, 1000.999),
                                      (100, 1000.999),
-                                     (2, 6.999)],
+                                     (2, 6.999),
+                                     (0.005, 0.10)],
                                     acq_func="EI",
                                     n_calls=200,
-                                    n_random_starts=80,
+                                    n_random_starts=120,
                                     noise="gaussian",
-                                    random_state=4242,
+                                    random_state=3232,
                                     save_name=test_path + "b_training_1.jpg")
 
     with open(test_path + 'test_results.pickle', 'wb') as test_results:

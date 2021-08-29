@@ -5,7 +5,7 @@ from numpy.random import RandomState
 from analysis.market_analyzer import MarketVisualizer
 from analysis.loss_function import compute_total_loss
 from market.exchange import Exchange
-from market.simulator import RandomSimulator, SimulatorPaper1, SimulatorFCN
+from market.simulator import RandomSimulator, SimulatorPaper1, SimulatorFCN, SimulatorFCNGamma
 from analysis.simulation_visualizer import VisualizeSimulation
 
 if not os.path.exists("../results/compare_losses/"):
@@ -82,7 +82,6 @@ real_market_visualizer.compare_market("1d", simulated_market_visualizer,
 total_loss = compute_total_loss(minute_price_df.values, "ExponentialSimulator")
 print(f"Total Loss wrt SPX: {total_loss}")
 
-
 # FCN Simulator
 
 exchange = Exchange()
@@ -99,3 +98,31 @@ total_loss = compute_total_loss(simulator_fcn.last_mid_price_series.price, "Simu
 print(f"Total Loss wrt SPX: {total_loss}")
 
 # FCN Gamma Simulator
+
+exchange = Exchange()
+simulator_fcn = SimulatorFCNGamma(exchange, 100, 500, 0.001, scale_fund=0.2, scale_chart=0.1, scale_noise=0.7,
+                                  gamma_traders_percentage=0, fund_price_trend=0, random_seed=101)
+simulator_fcn.run(200000, 10, 5, 20)
+
+simulated_market_visualizer = MarketVisualizer(simulator_fcn.last_mid_price_series.price, is_simulated=True)
+
+real_market_visualizer.compare_market("1d", simulated_market_visualizer,
+                                      '../results/compare_losses/fcn_stats.jpg')
+
+total_loss = compute_total_loss(simulator_fcn.last_mid_price_series.price, "SimulatorFCN")
+print(f"Total Loss wrt SPX: {total_loss}")
+
+# FCN Gamma Simulator Extra Optimized
+
+visualization_parameters = {"scale_fund": fund,
+                                "scale_chart": chart,
+                                "scale_noise": noise,
+                                "gamma_traders_percentage": res.x[2],
+                                "cancel_order_interval": int(res.x[3]),
+                                "order_margin": res.x[4],
+                                "min_lookback": int(res.x[5]),
+                                "lookback_range": int(res.x[6]),
+                                "trades_per_step": int(res.x[7])}
+
+
+

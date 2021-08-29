@@ -26,7 +26,7 @@ def log_to_linear(x, y, z):
 
 def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noise, cancel_order_interval,
                                      gamma_traders_percentage, order_margin, min_lookback, lookback_range,
-                                     trades_per_step, target_market_visualizer,
+                                     trades_per_step, target_market_visualizer, lam,
                                      save_dir=None):
     n_agents = 1000
     initial_fund_price = 5000
@@ -48,7 +48,8 @@ def visualize_parameters_performance(n_iters, scale_fund, scale_chart, scale_noi
                             "gamma_traders_percentage": gamma_traders_percentage,
                             "order_margin": order_margin,
                             "min_lookback": min_lookback,
-                            "lookback_range": lookback_range}
+                            "lookback_range": lookback_range,
+                            "lam": lam}
 
     run_parameters = {"n_steps": n_steps,
                       "average_trades_per_step": trades_per_step,
@@ -124,7 +125,7 @@ if __name__ == "__main__":
 
     # TODO Add volatility multiplier
 
-    test_number = 16
+    test_number = 23
     test_path = f"../results/bayesian_optimization_training/test_{test_number}/"
     test_path_analysis = f"../results/bayesian_optimization_analysis/test_{test_number}/"
     n_sims = 2
@@ -139,6 +140,7 @@ if __name__ == "__main__":
         res = pickle.load(test_results)
 
     plot_convergence(res)
+    plt.show()
 
     fund, chart, noise = spherical_to_cartesian(1.5, *res.x[:2])
     fund, chart, noise = log_to_linear(fund, chart, noise)
@@ -153,7 +155,8 @@ if __name__ == "__main__":
                                 "order_margin": res.x[4],
                                 "min_lookback": int(res.x[5]),
                                 "lookback_range": int(res.x[6]),
-                                "trades_per_step": int(res.x[7])}
+                                "trades_per_step": int(res.x[7]),
+                                "lam": res.x[8]}
 
     print('The best parameters are:', visualization_parameters)
 

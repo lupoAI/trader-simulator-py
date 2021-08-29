@@ -352,7 +352,7 @@ class SimulatorFCNGamma(Simulator):
 
     def __init__(self, exchange: Exchange, n_agents: int, initial_fund_price: int, fund_price_vol: float,
                  scale_fund=None, scale_chart=None, scale_noise=None, gamma_traders_percentage=0, fund_price_trend=0,
-                 random_seed: int = 42, order_margin=0.02, min_lookback=500, lookback_range=500):
+                 random_seed: int = 42, order_margin=0.02, min_lookback=500, lookback_range=500, lam=0.02):
         super().__init__(exchange, n_agents)
         self.fund_price_vol = fund_price_vol
         self.fund_price_trend = fund_price_trend
@@ -381,14 +381,24 @@ class SimulatorFCNGamma(Simulator):
                                     *self.agents_fcn[i],
                                     self.agents_time_window[i],
                                     self.agents_order_margin[i]) for i in range(self.n_fcn_agents)]
-        self.agents_gamma = [AgentGamma(self.exchange, rand_state.randint(2, 8)) for _ in range(self.n_gamma_agents)]
+        self.agents_gamma = [AgentGamma(self.exchange, rand_state.randint(2, 4)) for _ in range(self.n_gamma_agents)]
         self.agents = [*self.agents_fcn, *self.agents_gamma]
         self.agents_type = [0] * len(self.agents_fcn) + [1] * len(self.agents_gamma)
         self.fund_price_series = array([])
         self.minutes_of_trading = []
-        self.ewma_square_returns = []
+        self.returns = []
         self.square_returns = []
-        self.ewma_alpha = 2 / (100 + 1)  # Modify  # Same center of mass as a simple moving average with N=100
+        self.prev_mean = 0
+        self.mean = 0
+        self.var = 0
+        self.std = 0
+        self.mean_list = []
+        self.std_list = []
+        self.ewma_std_list = []
+        self.n = 1
+        self.lam = lam
+        self.ewma_var = 0
+        self.ewma_std = 0
 
     def create_fundamental_price_series(self, n_steps, random_seed: int):
         rand_state = RandomState(random_seed)
@@ -433,11 +443,23 @@ class SimulatorFCNGamma(Simulator):
         changed_period = True
         minute_trade_counter = 0
         open_price = self.initial_fund_price
-        self.ewma_square_returns = []
+
+        self.returns = []
         self.square_returns = []
+        self.prev_mean = 0
+        self.mean = 0
+        self.var = 0
+        self.std = 0
+        self.mean_list = []
+        self.std_list = []
+        self.ewma_std_list = []
+        self.n = 1
+        self.lam = 0.02
+        self.ewma_var = 0
+        self.ewma_std = 0
+
         observed_first_valid_price = False
         observed_second_valid_price = False
-        started_ewma = False
 
         for i in tqdm(range(n_trades)):
 
@@ -465,15 +487,28 @@ class SimulatorFCNGamma(Simulator):
                 if self.exchange.last_valid_mid_price is not None and not observed_first_valid_price:
                     observed_first_valid_price = True
                 if observed_first_valid_price and observed_second_valid_price:
-                    square_return = (self.last_mid_price_series[-1] / self.last_mid_price_series[-2] - 1) ** 2
+                    ret = self.last_mid_price_series[-1] / self.last_mid_price_series[-2] - 1
+                    square_return = ret ** 2
+                    self.returns += [ret]
                     self.square_returns += [square_return]
                     self.minutes_of_trading += [current_minute]
-                    if not started_ewma:
-                        self.ewma_square_returns += [square_return]
-                        started_ewma = True
-                    else:
-                        self.ewma_square_returns += [square_return * self.ewma_alpha
-                                                     + (self.ewma_square_returns[-1] * (1 - self.ewma_alpha))]
+
+                    self.prev_mean = self.mean
+
+                    self.mean += (ret - self.mean) / self.n
+
+                    self.var += ((ret - self.mean) ** 2 - self.var) / self.n + (self.n - 1) / self.n * (
+                                (self.mean - self.prev_mean) ** 2)
+                    self.std = np.sqrt(self.var)
+
+                    self.ewma_var += self.lam * ((ret - self.mean) ** 2 - self.ewma_var)
+                    self.ewma_std = np.sqrt(self.ewma_var)
+
+                    self.mean_list += [self.mean]
+                    self.std_list += [self.std]
+                    self.ewma_std_list += [self.ewma_std]
+
+                    self.n += 1
 
             if current_minute >= cancel_order_interval and changed_period:
                 for agent_id, order_id in orders_to_cancel[0]:
@@ -482,16 +517,15 @@ class SimulatorFCNGamma(Simulator):
 
             agent_choice = np.random.choice(possible_choice, p=prob_through_time[current_minute])
 
-            if started_ewma:
-                volume_multiplier = np.sqrt(self.ewma_square_returns[
-                                                -1]) / 0.004  # self.ewma_square_returns[-1] / 0.004 ** 2 #  np.sqrt(self.ewma_square_returns[-1]) / 0.004
+            if self.ewma_std != 0 and self.std != 0:
+                volume_multiplier = np.exp(2 * (self.ewma_std / self.std - 1))
             else:
                 volume_multiplier = 1
 
-            if volume_multiplier < 0.6:
-                volume_multiplier = 0.6
-            if volume_multiplier > 3:
-                volume_multiplier = 3
+            if volume_multiplier < 0.5:
+                volume_multiplier = 0.5
+            if volume_multiplier > 5:
+                volume_multiplier = 5
 
             if self.agents_type[agent_choice] == 0:
                 time_window = self.agents[agent_choice].submit_time_window()

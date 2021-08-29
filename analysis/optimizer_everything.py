@@ -34,6 +34,7 @@ def simulate_market(params):
     min_lookback = int(params[5])
     lookback_range = int(params[6])
     trades_per_step = int(params[7])
+    lam = params[8]
 
     x, y, z = spherical_to_cartesian(rho, theta, phi)
 
@@ -65,7 +66,8 @@ def simulate_market(params):
                             "random_seed": random_seed_simulation,
                             "order_margin": order_margin,
                             "min_lookback": min_lookback,
-                            "lookback_range": lookback_range}
+                            "lookback_range": lookback_range,
+                            "lam": lam}
 
     run_parameters = {"n_steps": n_steps,
                       "average_trades_per_step": trades_per_step,
