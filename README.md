@@ -1,3 +1,3 @@
 # abm-python
 
-## Refer to [README.pdf](https://link-url-here.org) for the thesis
+## Refer to [README.pdf](https://github.com/lupoAI/abm-python/blob/master/README.pdf) for the thesis
