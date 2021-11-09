@@ -1,3 +1,3 @@
 # abm-python
 
-## Refer to RREADME.pdf for the thesis
+## Refer to README.pdf for the thesis
